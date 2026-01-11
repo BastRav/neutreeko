@@ -111,18 +111,29 @@ impl Component for App {
             }
             None => ()
         }
+        
+        let is_active = |dir: &Direction| -> &str {
+            if *dir == self.direction { "background-color: #004d2f;" } else { "" }
+        };
+        
         html! {
             <ContextProvider<Rc<AppState>> context={app_state}>
-                <div>
-                    <button onclick={ctx.link().callback(|_| Msg::Up)}>{ "Up" }</button>
-                    <button onclick={ctx.link().callback(|_| Msg::Down)}>{ "Down" }</button>
-                    <button onclick={ctx.link().callback(|_| Msg::Left)}>{ "Left" }</button>
-                    <button onclick={ctx.link().callback(|_| Msg::Right)}>{ "Right" }</button>
-                    <button onclick={ctx.link().callback(|_| Msg::UpLeft)}>{ "UpLeft" }</button>
-                    <button onclick={ctx.link().callback(|_| Msg::UpRight)}>{ "UpRight" }</button>
-                    <button onclick={ctx.link().callback(|_| Msg::DownLeft)}>{ "DownLeft" }</button>
-                    <button onclick={ctx.link().callback(|_| Msg::DownRight)}>{ "DownRight" }</button>
-                    <p>{ format!("Next move direction {:?}", self.direction) }</p>
+                <div style="display: flex; flex-direction: column; align-items: left; gap: 10px; margin-bottom: 20px;">
+                    <div style="display: flex; gap: 10px; justify-content: left;">
+                        <button style={format!("width: 50px; height: 50px; font-size: 20px; {}", is_active(&Direction::UpLeft))} onclick={ctx.link().callback(|_| Msg::UpLeft)}>{ "↖" }</button>
+                        <button style={format!("width: 50px; height: 50px; font-size: 20px; {}", is_active(&Direction::Up))} onclick={ctx.link().callback(|_| Msg::Up)}>{ "↑" }</button>
+                        <button style={format!("width: 50px; height: 50px; font-size: 20px; {}", is_active(&Direction::UpRight))} onclick={ctx.link().callback(|_| Msg::UpRight)}>{ "↗" }</button>
+                    </div>
+                    <div style="display: flex; gap: 10px; justify-content: left;">
+                        <button style={format!("width: 50px; height: 50px; font-size: 20px; {}", is_active(&Direction::Left))} onclick={ctx.link().callback(|_| Msg::Left)}>{ "←" }</button>
+                        <div style="width: 50px; height: 50px;"></div>
+                        <button style={format!("width: 50px; height: 50px; font-size: 20px; {}", is_active(&Direction::Right))} onclick={ctx.link().callback(|_| Msg::Right)}>{ "→" }</button>
+                    </div>
+                    <div style="display: flex; gap: 10px; justify-content: left;">
+                        <button style={format!("width: 50px; height: 50px; font-size: 20px; {}", is_active(&Direction::DownLeft))} onclick={ctx.link().callback(|_| Msg::DownLeft)}>{ "↙" }</button>
+                        <button style={format!("width: 50px; height: 50px; font-size: 20px; {}", is_active(&Direction::Down))} onclick={ctx.link().callback(|_| Msg::Down)}>{ "↓" }</button>
+                        <button style={format!("width: 50px; height: 50px; font-size: 20px; {}", is_active(&Direction::DownRight))} onclick={ctx.link().callback(|_| Msg::DownRight)}>{ "↘" }</button>
+                    </div>
                 </div>
                 <h2>{ next_player_text }</h2>
                 <button onclick={ctx.link().callback(|_| Msg::Restart)}>{ "Restart Game" }</button>
@@ -146,7 +157,6 @@ pub struct PawnComponent {
 }
 
 const SCALING: u32 = 80;
-const FROM_TOP: u32 = 220;
 
 const MARGIN: u32 = 5;
 
@@ -223,8 +233,8 @@ impl Component for BoardView {
         }
         html! {
             <div style={format!(
-                "position: absolute; top: {}px; width: {}px; height: {}px; background-image: linear-gradient(0deg, #e0e0e0 1px, transparent 1px), linear-gradient(90deg, #e0e0e0 1px, transparent 1px); background-size: {}px {}px; background-position: 0 0; border-top: 1px solid #e0e0e0; border-left: 1px solid #e0e0e0; border-right: 1px solid #e0e0e0; border-bottom: 1px solid #e0e0e0;",
-                FROM_TOP,
+                "position: relative; top: {}px; width: {}px; height: {}px; background-image: linear-gradient(0deg, #e0e0e0 1px, transparent 1px), linear-gradient(90deg, #e0e0e0 1px, transparent 1px); background-size: {}px {}px; background-position: 0 0; border-top: 1px solid #e0e0e0; border-left: 1px solid #e0e0e0; border-right: 1px solid #e0e0e0; border-bottom: 1px solid #e0e0e0;",
+                MARGIN,
                 SCALING * ctx.props().board.number_of_columns as u32,
                 SCALING * ctx.props().board.number_of_rows as u32,
                 SCALING, SCALING

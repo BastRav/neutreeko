@@ -28,7 +28,7 @@ pub struct Board {
     pub next_player: Option<Color>
 }
 
-#[derive(EnumIter, Clone, Debug)]
+#[derive(EnumIter, Clone, Debug, PartialEq)]
 pub enum Direction {
     Up,
     Down,
