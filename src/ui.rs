@@ -15,6 +15,7 @@ pub enum Msg {
     UpRight,
     DownLeft,
     DownRight,
+    Restart
 }
 
 pub struct App {
@@ -86,6 +87,9 @@ impl Component for App {
             Msg::DownRight => {
                 self.direction = Direction::DownRight;
             }
+            Msg::Restart => {
+                self.board = Board::default_new();
+            }
         }
         true
     }
@@ -94,8 +98,9 @@ impl Component for App {
         let app_state = self.state.clone();
         let mut next_player_text;
         match self.board.next_player {
-            crate::logic::Color::Green => next_player_text = "Green".to_string() + "'s turn",
-            crate::logic::Color::Yellow => next_player_text = "Yellow".to_string() + "'s turn",
+            Some(crate::logic::Color::Green) => next_player_text = "Green".to_string() + "'s turn",
+            Some(crate::logic::Color::Yellow) => next_player_text = "Yellow".to_string() + "'s turn",
+            None => next_player_text = "".to_string(),
         }
         match self.board.winner(){
             Some(color) => {
@@ -120,6 +125,7 @@ impl Component for App {
                     <p>{ format!("Next move direction {:?}", self.direction) }</p>
                 </div>
                 <h2>{ next_player_text }</h2>
+                <button onclick={ctx.link().callback(|_| Msg::Restart)}>{ "Restart Game" }</button>
                 <BoardView board={self.board.clone()} />
             </ContextProvider<Rc<AppState>>>
         }

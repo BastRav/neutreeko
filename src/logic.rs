@@ -25,7 +25,7 @@ pub struct Board {
     pub number_of_rows: u8,
     pub number_of_columns: u8,
     pub pawns: Vec<Pawn>,
-    pub next_player: Color
+    pub next_player: Option<Color>
 }
 
 #[derive(EnumIter, Clone, Debug)]
@@ -75,7 +75,7 @@ pub fn aligned_positions (positions: &mut Vec<Position>) -> bool {
 }
 
 impl Board {
-    pub fn new (number_of_rows: u8, number_of_columns: u8, pawns: Vec<Pawn>, next_player: Color) -> Board {
+    pub fn new (number_of_rows: u8, number_of_columns: u8, pawns: Vec<Pawn>, next_player: Option<Color>) -> Board {
         let board = Board { number_of_rows, number_of_columns, pawns, next_player };
         if board.is_valid() {
             board
@@ -93,7 +93,7 @@ impl Board {
         pawns.push(Pawn::new(Color::Yellow, Position { row: 1, column: 2 }));
         pawns.push(Pawn::new(Color::Yellow, Position { row: 4, column: 1 }));
         pawns.push(Pawn::new(Color::Yellow, Position { row: 4, column: 3 }));
-        Board::new(5, 5, pawns, Color::Green)
+        Board::new(5, 5, pawns, Some(Color::Green))
     }
 
     fn is_valid (&self) -> bool {
@@ -136,13 +136,47 @@ impl Board {
         None
     }
 
-    pub fn move_pawn(&mut self, pawn_index: usize, direction: &Direction) -> bool {
-        let pawn_to_move = &self.pawns.get(pawn_index).unwrap();
-        if pawn_to_move.color != self.next_player {
+    pub fn move_pawn(&mut self, pawn_index: usize, row_increment: i32, column_increment: i32) -> bool {
+        let init_position = self.pawns[pawn_index].position.clone();
+        
+        let final_row = i32::from(init_position.row) + row_increment;
+        let final_column = i32::from(init_position.column) + column_increment;
+
+        let mut valid_move = true;
+        if final_row < 0 || final_row >= i32::from(self.number_of_rows) {
+            valid_move = false;
+        }
+        if final_column < 0 || final_column >= i32::from(self.number_of_columns) {
+            valid_move = false;
+        }
+        if !valid_move {
             return false;
         }
-        let init_position = pawn_to_move.position.clone();
+        let final_position = Position{
+            row: u8::try_from(final_row).unwrap(),
+            column: u8::try_from(final_column).unwrap()
+        };
         
+        self.pawns[pawn_index].position = final_position;
+        if self.is_valid() {
+            true
+        }
+        else {
+            self.pawns[pawn_index].position = init_position.clone();
+            false 
+        }
+    }
+
+    pub fn move_pawn_until_blocked(&mut self, pawn_index: usize, direction: &Direction) -> bool {
+        let mut has_moved = false;
+        match &self.next_player {
+            None => return false,
+            Some(color) => {
+                if self.pawns[pawn_index].color != *color {
+                    return false;
+                }
+            }
+        };
         let mut row_increment = 0;
         let mut column_increment = 0;
         match direction {
@@ -167,48 +201,21 @@ impl Board {
                 column_increment = 1;
             }
         }
-        
-        let final_row = i32::from(init_position.row) + row_increment;
-        let final_column = i32::from(init_position.column) + column_increment;
-
-        let mut valid_move = true;
-        if final_row < 0 || final_row >= i32::from(self.number_of_rows) {
-            valid_move = false;
-        }
-        if final_column < 0 || final_column >= i32::from(self.number_of_columns) {
-            valid_move = false;
-        }
-        if !valid_move {
-            return false;
-        }
-        let final_position = Position{
-            row: u8::try_from(final_row).unwrap(),
-            column: u8::try_from(final_column).unwrap()
-        };
-        
-        self.pawns.get_mut(pawn_index).unwrap().position = final_position;
-        if self.is_valid() {
-            true
-        }
-        else {
-            self.pawns.get_mut(pawn_index).unwrap().position = init_position.clone();
-            false 
-        }
-    }
-
-    pub fn move_pawn_until_blocked(&mut self, pawn_index: usize, direction: &Direction) -> bool {
-        let mut has_moved = false;
         loop {
-            match self.move_pawn(pawn_index, direction) {
+            match self.move_pawn(pawn_index, row_increment, column_increment) {
                 true => has_moved = true,
                 false => break
             }
         }
         if has_moved {
-            // Switch to the other player
+            if self.winner().is_some() {
+                self.next_player = None;
+                return has_moved;
+            }
             self.next_player = match self.next_player {
-                Color::Green => Color::Yellow,
-                Color::Yellow => Color::Green
+                Some(Color::Green) => Some(Color::Yellow),
+                Some(Color::Yellow) => Some(Color::Green),
+                None => None
             };
         }
         has_moved
