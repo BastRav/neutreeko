@@ -55,11 +55,11 @@ impl Component for App {
                 shared_state.last_clicked = Some(pawn_index);
 
                 let mut new_board = self.board.clone();
-                match new_board.move_pawn(pawn_index, &self.direction) {
-                    Some(_) => {
+                match new_board.move_pawn_until_blocked(pawn_index, &self.direction) {
+                    true => {
                         self.board = new_board;
                     },
-                    None => ()
+                    false => ()
                 };
             }
             Msg::Up => {
@@ -92,12 +92,16 @@ impl Component for App {
 
     fn view(&self, ctx: &Context<Self>) -> Html {
         let app_state = self.state.clone();
-        let mut winner_text = "".to_string();
+        let mut next_player_text;
+        match self.board.next_player {
+            crate::logic::Color::Green => next_player_text = "Green".to_string() + "'s turn",
+            crate::logic::Color::Yellow => next_player_text = "Yellow".to_string() + "'s turn",
+        }
         match self.board.winner(){
             Some(color) => {
                 match color {
-                    crate::logic::Color::Green => winner_text = "Green".to_string(),
-                    crate::logic::Color::Yellow => winner_text = "Yellow".to_string(),
+                    crate::logic::Color::Green => next_player_text = "Green".to_string() + " wins!",
+                    crate::logic::Color::Yellow => next_player_text = "Yellow".to_string() + " wins!",
                 }
             }
             None => ()
@@ -115,7 +119,7 @@ impl Component for App {
                     <button onclick={ctx.link().callback(|_| Msg::DownRight)}>{ "DownRight" }</button>
                     <p>{ format!("Next move direction {:?}", self.direction) }</p>
                 </div>
-                <h1>{ winner_text }</h1>
+                <h2>{ next_player_text }</h2>
                 <BoardView board={self.board.clone()} />
             </ContextProvider<Rc<AppState>>>
         }
@@ -180,8 +184,8 @@ impl Component for PawnView {
                         crate::logic::Color::Green => "green",
                         crate::logic::Color::Yellow => "yellow",
                     },
-                    FROM_TOP + u32::from(ctx.props().position.row) * SCALING + MARGIN,
-                    u32::from(ctx.props().position.column) * SCALING + MARGIN,
+                    u32::from(ctx.props().position.row) * SCALING + MARGIN - 1,
+                    u32::from(ctx.props().position.column) * SCALING + MARGIN - 1,
                 )}
             >
             </div>
@@ -212,7 +216,13 @@ impl Component for BoardView {
             });
         }
         html! {
-            <div style="position: relative; width: 400px; height: 400px;">
+            <div style={format!(
+                "position: absolute; top: {}px; width: {}px; height: {}px; background-image: linear-gradient(0deg, #e0e0e0 1px, transparent 1px), linear-gradient(90deg, #e0e0e0 1px, transparent 1px); background-size: {}px {}px; background-position: 0 0; border-top: 1px solid #e0e0e0; border-left: 1px solid #e0e0e0; border-right: 1px solid #e0e0e0; border-bottom: 1px solid #e0e0e0;",
+                FROM_TOP,
+                SCALING * ctx.props().board.number_of_columns as u32,
+                SCALING * ctx.props().board.number_of_rows as u32,
+                SCALING, SCALING
+            )}>
                 {pawns}
             </div>
         }

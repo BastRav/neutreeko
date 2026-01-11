@@ -619,14 +619,14 @@ function __wbg_get_imports() {
         const ret = getStringFromWasm0(arg0, arg1);
         return ret;
     };
-    imports.wbg.__wbindgen_cast_22daa9e11cd314ef = function(arg0, arg1) {
-        // Cast intrinsic for `Closure(Closure { dtor_idx: 368, function: Function { arguments: [Externref], shim_idx: 369, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
-        const ret = makeMutClosure(arg0, arg1, wasm.wasm_bindgen__closure__destroy__hfaee68a5b1bd92f7, wasm_bindgen__convert__closures_____invoke__h240c3cc64ec03960);
+    imports.wbg.__wbindgen_cast_a7a80626b66fd8f0 = function(arg0, arg1) {
+        // Cast intrinsic for `Closure(Closure { dtor_idx: 206, function: Function { arguments: [Ref(NamedExternref("Event"))], shim_idx: 207, ret: Unit, inner_ret: Some(Unit) }, mutable: false }) -> Externref`.
+        const ret = makeClosure(arg0, arg1, wasm.wasm_bindgen__closure__destroy__h18ca8ccb631c0f35, wasm_bindgen__convert__closures________invoke__h99f86200d4b3c1a0);
         return ret;
     };
-    imports.wbg.__wbindgen_cast_5faf45dd46a025c7 = function(arg0, arg1) {
-        // Cast intrinsic for `Closure(Closure { dtor_idx: 204, function: Function { arguments: [Ref(NamedExternref("Event"))], shim_idx: 205, ret: Unit, inner_ret: Some(Unit) }, mutable: false }) -> Externref`.
-        const ret = makeClosure(arg0, arg1, wasm.wasm_bindgen__closure__destroy__h18ca8ccb631c0f35, wasm_bindgen__convert__closures________invoke__h99f86200d4b3c1a0);
+    imports.wbg.__wbindgen_cast_f5c6fabb752f0257 = function(arg0, arg1) {
+        // Cast intrinsic for `Closure(Closure { dtor_idx: 370, function: Function { arguments: [Externref], shim_idx: 371, ret: Unit, inner_ret: Some(Unit) }, mutable: true }) -> Externref`.
+        const ret = makeMutClosure(arg0, arg1, wasm.wasm_bindgen__closure__destroy__hfaee68a5b1bd92f7, wasm_bindgen__convert__closures_____invoke__h240c3cc64ec03960);
         return ret;
     };
     imports.wbg.__wbindgen_init_externref_table = function() {
@@ -686,7 +686,7 @@ async function __wbg_init(module_or_path) {
     }
 
     if (typeof module_or_path === 'undefined') {
-        module_or_path = new URL('neutreeko-22b0e500b66c8eff_bg.wasm', import.meta.url);
+        module_or_path = new URL('neutreeko-d0cdb5a2b8be1188_bg.wasm', import.meta.url);
     }
     const imports = __wbg_get_imports();
 
