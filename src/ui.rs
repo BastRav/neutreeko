@@ -15,7 +15,9 @@ pub enum Msg {
     UpRight,
     DownLeft,
     DownRight,
-    Restart
+    Restart,
+    AiGreen,
+    AiYellow,
 }
 
 pub struct App {
@@ -59,6 +61,7 @@ impl Component for App {
                 match new_board.move_pawn_until_blocked(pawn_index, &self.direction) {
                     true => {
                         self.board = new_board;
+                        self.board.ai_play();
                     },
                     false => ()
                 };
@@ -89,6 +92,14 @@ impl Component for App {
             }
             Msg::Restart => {
                 self.board = Board::default_new();
+            }
+            Msg::AiGreen => {
+                self.board.ai = Some(crate::logic::Color::Yellow);
+                self.board.ai_play();
+            }
+            Msg::AiYellow => {
+                self.board.ai = Some(crate::logic::Color::Green);
+                self.board.ai_play();
             }
         }
         true
@@ -136,7 +147,11 @@ impl Component for App {
                     </div>
                 </div>
                 <h2>{ next_player_text }</h2>
-                <button onclick={ctx.link().callback(|_| Msg::Restart)}>{ "Restart Game" }</button>
+                <div>
+                    <button onclick={ctx.link().callback(|_| Msg::Restart)}>{ "Restart Game" }</button>
+                    <button onclick={ctx.link().callback(|_| Msg::AiGreen)}>{ "Play against AI as Green" }</button>
+                    <button onclick={ctx.link().callback(|_| Msg::AiYellow)}>{ "Play against AI as Yellow" }</button>
+                </div>
                 <BoardView board={self.board.clone()} />
             </ContextProvider<Rc<AppState>>>
         }

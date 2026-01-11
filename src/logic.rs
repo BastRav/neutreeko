@@ -1,6 +1,18 @@
 use core::panic;
 use std::collections::HashSet;
 use strum_macros::EnumIter;
+use strum::IntoEnumIterator;
+use wasm_bindgen::prelude::*;
+
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(js_namespace = Math)]
+    fn random() -> f64;
+}
+
+fn get_random_f32() -> f32 {
+    random() as f32
+}
 
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
 pub enum Color {
@@ -25,7 +37,8 @@ pub struct Board {
     pub number_of_rows: u8,
     pub number_of_columns: u8,
     pub pawns: Vec<Pawn>,
-    pub next_player: Option<Color>
+    pub next_player: Option<Color>,
+    pub ai: Option<Color>,
 }
 
 #[derive(EnumIter, Clone, Debug, PartialEq)]
@@ -75,8 +88,8 @@ pub fn aligned_positions (positions: &mut Vec<Position>) -> bool {
 }
 
 impl Board {
-    pub fn new (number_of_rows: u8, number_of_columns: u8, pawns: Vec<Pawn>, next_player: Option<Color>) -> Board {
-        let board = Board { number_of_rows, number_of_columns, pawns, next_player };
+    pub fn new (number_of_rows: u8, number_of_columns: u8, pawns: Vec<Pawn>, next_player: Option<Color>, ai: Option<Color>) -> Board {
+        let board = Board { number_of_rows, number_of_columns, pawns, next_player, ai };
         if board.is_valid() {
             board
         }
@@ -93,7 +106,7 @@ impl Board {
         pawns.push(Pawn::new(Color::Yellow, Position { row: 1, column: 2 }));
         pawns.push(Pawn::new(Color::Yellow, Position { row: 4, column: 1 }));
         pawns.push(Pawn::new(Color::Yellow, Position { row: 4, column: 3 }));
-        Board::new(5, 5, pawns, Some(Color::Green))
+        Board::new(5, 5, pawns, Some(Color::Green), None)
     }
 
     fn is_valid (&self) -> bool {
@@ -219,5 +232,58 @@ impl Board {
             };
         }
         has_moved
+    }
+
+    pub fn ai_play(&mut self) {
+        match &self.ai {
+            None => (),
+            Some(color) => {
+                if self.next_player != Some(color.clone()) {
+                    return;
+                }
+                let (pawn_index, direction) = self.best_move();
+                self.move_pawn_until_blocked(pawn_index, &direction);
+            }
+        }
+    }
+
+    fn score_board(&self) -> f32 {
+        match self.winner() {
+            Some(winner_color) => {
+                if winner_color == self.ai.clone().unwrap() {
+                    100.0
+                } else {
+                    -100.0
+                }
+            },
+            None => {
+                get_random_f32() * 2.0 - 1.0
+            }
+        }
+    }
+
+    fn best_move(&self) -> (usize, Direction) {
+        let mut best_score = -999.0;
+        let mut best_move = (0, Direction::Up);
+        for (pawn_index, pawn) in self.pawns.iter().enumerate() {
+            if pawn.color != self.ai.clone().unwrap() {
+                continue;
+            }
+            let directions = Direction::iter();
+            for direction in directions {
+                let mut new_board = self.clone();
+                match new_board.move_pawn_until_blocked(pawn_index, &direction) {
+                    true => {
+                        let score = new_board.score_board();
+                        if score > best_score {
+                            best_score = score;
+                            best_move = (pawn_index, direction);
+                        }
+                    },
+                    false => ()
+                };
+            }
+        }
+        best_move
     }
 }
