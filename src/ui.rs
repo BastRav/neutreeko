@@ -3,7 +3,8 @@ use std::rc::Rc;
 use yew::prelude::*;
 use yew::{html, Component, Context, Html};
 
-use crate::logic::{Board, Direction, Pawn, Position};
+use crate::ai::AI;
+use crate::logic::{Board, Direction, Pawn, Position, Color};
 
 pub enum Msg {
     PawnClick(usize),
@@ -23,7 +24,9 @@ pub enum Msg {
 pub struct App {
     board: Board,
     state: Rc<AppState>,
-    direction: Direction
+    direction: Direction,
+    ai: Option<Color>,
+    ai_depth: usize,
 }
 
 #[derive(Clone, PartialEq)]
@@ -47,7 +50,9 @@ impl Component for App {
         Self {
             board: board,
             state: state,
-            direction: Direction::Up
+            direction: Direction::Up,
+            ai: None,
+            ai_depth: 4,
         }
     }
 
@@ -61,7 +66,16 @@ impl Component for App {
                 match new_board.move_pawn_until_blocked(pawn_index, &self.direction) {
                     true => {
                         self.board = new_board;
-                        self.board.ai_play();
+                        match &self.ai {
+                            Some(ai_color) => {
+                                let ai_move = AI::new(ai_color.clone(), self.board.clone(), self.ai_depth).ai_play();
+                                match ai_move {
+                                    Some((ai_pawn_index, ai_direction)) => self.board.move_pawn_until_blocked(ai_pawn_index, &ai_direction),
+                                    None => false,
+                                }
+                            }
+                            None => false
+                        };
                     },
                     false => ()
                 };
@@ -92,14 +106,23 @@ impl Component for App {
             }
             Msg::Restart => {
                 self.board = Board::default_new();
+                self.ai = None;
             }
             Msg::AiGreen => {
-                self.board.ai = Some(crate::logic::Color::Yellow);
-                self.board.ai_play();
+                self.ai = Some(Color::Yellow);
+                let ai_move = AI::new(Color::Yellow, self.board.clone(), self.ai_depth).ai_play();
+                match ai_move {
+                    Some((ai_pawn_index, ai_direction)) => self.board.move_pawn_until_blocked(ai_pawn_index, &ai_direction),
+                    None => false,
+                };
             }
             Msg::AiYellow => {
-                self.board.ai = Some(crate::logic::Color::Green);
-                self.board.ai_play();
+                self.ai = Some(Color::Green);
+                let ai_move = AI::new(Color::Green, self.board.clone(), self.ai_depth).ai_play();
+                match ai_move {
+                    Some((ai_pawn_index, ai_direction)) => self.board.move_pawn_until_blocked(ai_pawn_index, &ai_direction),
+                    None => false,
+                };
             }
         }
         true
@@ -208,17 +231,18 @@ impl Component for PawnView {
             <div
                 onclick={onclick}
                 style={format!(
-                    "width: {}px; height: {}px; background-color: {}; position: absolute; top: {}px; left: {}px; border-radius: 50%; border: 2px solid black; cursor: pointer;",
+                    "width: {}px; height: {}px; background-color: {}; position: absolute; top: {}px; left: {}px; border-radius: 50%; border: 2px solid black; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: bold; color: black;",
                     SCALING - MARGIN * 2,
                     SCALING - MARGIN * 2,
                     match ctx.props().pawn.color {
-                        crate::logic::Color::Green => "green",
-                        crate::logic::Color::Yellow => "yellow",
+                        Color::Green => "green",
+                        Color::Yellow => "yellow",
                     },
                     u32::from(ctx.props().position.row) * SCALING + MARGIN - 1,
                     u32::from(ctx.props().position.column) * SCALING + MARGIN - 1,
                 )}
             >
+                {ctx.props().index}
             </div>
         }
     }
