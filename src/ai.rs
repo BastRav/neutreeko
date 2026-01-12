@@ -39,16 +39,17 @@ impl AI {
     }
 
     fn score_board(&self) -> f32 {
+        let random_addition = get_random_f32() * 2.0 - 1.0; // small random value between -1.0 and 1.0
         match self.board.winner() {
             Some(winner_color) => {
                 if winner_color == self.color.clone() {
-                    100.0
+                    100.0 + random_addition
                 } else {
-                    -100.0
+                    -100.0 + random_addition
                 }
             },
             None => {
-                get_random_f32() * 2.0 - 1.0
+                random_addition
             }
         }
     }
