@@ -1,4 +1,3 @@
-use core::panic;
 use std::collections::HashSet;
 use strum_macros::EnumIter;
 
@@ -15,8 +14,8 @@ pub struct Pawn {
 }
 
 impl Pawn {
-    pub fn new (color: Color, position: Position) -> Pawn {
-        Pawn { color, position }
+    pub fn new(color: Color, position: Position) -> Self {
+        Self { color, position }
     }
 }
 
@@ -42,11 +41,11 @@ pub enum Direction {
 
 #[derive(PartialEq, Eq, Hash, Clone)]
 pub struct Position {
-    pub row : u8,
-    pub column: u8
+    pub row: u8,
+    pub column: u8,
 }
 
-pub fn aligned_positions (positions: &mut Vec<Position>) -> bool {
+pub fn aligned_positions(positions: &mut Vec<Position>) -> bool {
     if positions.len() != 3 {
         panic!("aligned_positions function requires exactly 3 positions");
     }
@@ -68,24 +67,20 @@ pub fn aligned_positions (positions: &mut Vec<Position>) -> bool {
     let adjacent_rows = (rows[2] - rows[1] == 1) && (rows[1] - rows[0] == 1);
     let adjacent_columns = (sorted_columns[2] - sorted_columns[1] == 1) && (sorted_columns[1] - sorted_columns[0] == 1);
     let diagonal = adjacent_rows && ((columns[2] - columns[1] == 1 && columns[1] - columns[0] == 1) || (columns[2] - columns[1] == -1 && columns[1] - columns[0] == -1));
-    if (same_row && adjacent_columns) || (same_column && adjacent_rows) || diagonal {
-        return true;
-    }
-    false
+    (same_row && adjacent_columns) || (same_column && adjacent_rows) || diagonal
 }
 
 impl Board {
-    pub fn new (number_of_rows: u8, number_of_columns: u8, pawns: Vec<Pawn>, next_player: Option<Color>) -> Board {
-        let board = Board { number_of_rows, number_of_columns, pawns, next_player};
+    pub fn new(number_of_rows: u8, number_of_columns: u8, pawns: Vec<Pawn>, next_player: Option<Color>) -> Self {
+        let board = Self { number_of_rows, number_of_columns, pawns, next_player};
         if board.is_valid() {
             board
-        }
-        else {
+        } else {
             panic!("Invalid board, pawns are on the same position or out of bounds")
         }
     }
 
-    pub fn default_new () -> Board {
+    pub fn default_new() -> Self {
         let mut pawns = Vec::new();
         pawns.push(Pawn::new(Color::Green, Position { row: 0, column: 1 }));
         pawns.push(Pawn::new(Color::Green, Position { row: 0, column: 3 }));
@@ -93,17 +88,17 @@ impl Board {
         pawns.push(Pawn::new(Color::Yellow, Position { row: 1, column: 2 }));
         pawns.push(Pawn::new(Color::Yellow, Position { row: 4, column: 1 }));
         pawns.push(Pawn::new(Color::Yellow, Position { row: 4, column: 3 }));
-        Board::new(5, 5, pawns, Some(Color::Green))
+        Self::new(5, 5, pawns, Some(Color::Green))
     }
 
-    fn is_valid (&self) -> bool {
+    fn is_valid(&self) -> bool {
         let mut occupied_positions_values: HashSet<Position> = HashSet::new();
         for pawn in self.pawns.iter() {
             if pawn.position.row >= self.number_of_rows || pawn.position.column >= self.number_of_columns {
-                return false
+                return false;
             }
             if !occupied_positions_values.insert(pawn.position.clone()) {
-                return false
+                return false;
             }
         }
         true
@@ -111,7 +106,7 @@ impl Board {
 
     pub fn winner(&self) -> Option<Color> {
         if !self.is_valid() {
-            return None
+            return None;
         }
 
         let mut yellow_positions = Vec::new();
@@ -119,19 +114,15 @@ impl Board {
 
         for pawn in self.pawns.iter() {
             match pawn.color {
-                Color::Green => {
-                    green_positions.push(pawn.position.clone());
-                }
-                Color::Yellow => {
-                    yellow_positions.push(pawn.position.clone());
-                }
+                Color::Green => green_positions.push(pawn.position.clone()),
+                Color::Yellow => yellow_positions.push(pawn.position.clone()),
             }
         }
         if aligned_positions(&mut green_positions) {
-            return Some(Color::Green)
+            return Some(Color::Green);
         }
         if aligned_positions(&mut yellow_positions) {
-            return Some(Color::Yellow)
+            return Some(Color::Yellow);
         }
         None
     }
@@ -142,14 +133,8 @@ impl Board {
         let final_row = i32::from(init_position.row) + row_increment;
         let final_column = i32::from(init_position.column) + column_increment;
 
-        let mut valid_move = true;
-        if final_row < 0 || final_row >= i32::from(self.number_of_rows) {
-            valid_move = false;
-        }
-        if final_column < 0 || final_column >= i32::from(self.number_of_columns) {
-            valid_move = false;
-        }
-        if !valid_move {
+        if final_row < 0 || final_row >= i32::from(self.number_of_rows)
+            || final_column < 0 || final_column >= i32::from(self.number_of_columns) {
             return false;
         }
         let final_position = Position{
@@ -160,10 +145,9 @@ impl Board {
         self.pawns[pawn_index].position = final_position;
         if self.is_valid() {
             true
-        }
-        else {
-            self.pawns[pawn_index].position = init_position.clone();
-            false 
+        } else {
+            self.pawns[pawn_index].position = init_position;
+            false
         }
     }
 
@@ -202,10 +186,10 @@ impl Board {
             }
         }
         loop {
-            match self.move_pawn(pawn_index, row_increment, column_increment) {
-                true => has_moved = true,
-                false => break
+            if !self.move_pawn(pawn_index, row_increment, column_increment) {
+                break;
             }
+            has_moved = true;
         }
         if has_moved {
             if self.winner().is_some() {
@@ -215,7 +199,7 @@ impl Board {
             self.next_player = match self.next_player {
                 Some(Color::Green) => Some(Color::Yellow),
                 Some(Color::Yellow) => Some(Color::Green),
-                None => None
+                None => None,
             };
         }
         has_moved

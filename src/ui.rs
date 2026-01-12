@@ -48,8 +48,8 @@ impl Component for App {
 
         let board = Board::default_new();
         Self {
-            board: board,
-            state: state,
+            board,
+            state,
             direction: Direction::Up,
             ai: None,
             ai_depth: 4,
@@ -63,22 +63,15 @@ impl Component for App {
                 shared_state.last_clicked = Some(pawn_index);
 
                 let mut new_board = self.board.clone();
-                match new_board.move_pawn_until_blocked(pawn_index, &self.direction) {
-                    true => {
-                        self.board = new_board;
-                        match &self.ai {
-                            Some(ai_color) => {
-                                let ai_move = AI::new(ai_color.clone(), self.board.clone(), self.ai_depth).ai_play();
-                                match ai_move {
-                                    Some((ai_pawn_index, ai_direction)) => self.board.move_pawn_until_blocked(ai_pawn_index, &ai_direction),
-                                    None => false,
-                                }
-                            }
-                            None => false
-                        };
-                    },
-                    false => ()
-                };
+                if new_board.move_pawn_until_blocked(pawn_index, &self.direction) {
+                    self.board = new_board;
+                    if let Some(ai_color) = &self.ai {
+                        let ai_move = AI::new(ai_color.clone(), self.board.clone(), self.ai_depth).ai_play();
+                        if let Some((ai_pawn_index, ai_direction)) = ai_move {
+                            self.board.move_pawn_until_blocked(ai_pawn_index, &ai_direction);
+                        }
+                    }
+                }
             }
             Msg::Up => {
                 self.direction = Direction::Up;
@@ -111,18 +104,16 @@ impl Component for App {
             Msg::AiGreen => {
                 self.ai = Some(Color::Yellow);
                 let ai_move = AI::new(Color::Yellow, self.board.clone(), self.ai_depth).ai_play();
-                match ai_move {
-                    Some((ai_pawn_index, ai_direction)) => self.board.move_pawn_until_blocked(ai_pawn_index, &ai_direction),
-                    None => false,
-                };
+                if let Some((ai_pawn_index, ai_direction)) = ai_move {
+                    self.board.move_pawn_until_blocked(ai_pawn_index, &ai_direction);
+                }
             }
             Msg::AiYellow => {
                 self.ai = Some(Color::Green);
                 let ai_move = AI::new(Color::Green, self.board.clone(), self.ai_depth).ai_play();
-                match ai_move {
-                    Some((ai_pawn_index, ai_direction)) => self.board.move_pawn_until_blocked(ai_pawn_index, &ai_direction),
-                    None => false,
-                };
+                if let Some((ai_pawn_index, ai_direction)) = ai_move {
+                    self.board.move_pawn_until_blocked(ai_pawn_index, &ai_direction);
+                }
             }
         }
         true
@@ -130,21 +121,15 @@ impl Component for App {
 
     fn view(&self, ctx: &Context<Self>) -> Html {
         let app_state = self.state.clone();
-        let mut next_player_text;
-        match self.board.next_player {
-            Some(crate::logic::Color::Green) => next_player_text = "Green".to_string() + "'s turn",
-            Some(crate::logic::Color::Yellow) => next_player_text = "Yellow".to_string() + "'s turn",
-            None => next_player_text = "".to_string(),
-        }
-        match self.board.winner(){
-            Some(color) => {
-                match color {
-                    crate::logic::Color::Green => next_player_text = "Green".to_string() + " wins!",
-                    crate::logic::Color::Yellow => next_player_text = "Yellow".to_string() + " wins!",
-                }
+        let next_player_text = match self.board.winner() {
+            Some(Color::Green) => "Green wins!".to_string(),
+            Some(Color::Yellow) => "Yellow wins!".to_string(),
+            None => match self.board.next_player {
+                Some(Color::Green) => "Green's turn".to_string(),
+                Some(Color::Yellow) => "Yellow's turn".to_string(),
+                None => String::new(),
             }
-            None => ()
-        }
+        };
         
         let is_active = |dir: &Direction| -> &str {
             if *dir == self.direction { "background-color: #004d2f;" } else { "" }

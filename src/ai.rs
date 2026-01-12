@@ -1,4 +1,3 @@
-use std::vec;
 use std::collections::HashMap;
 
 use crate::logic::{Board, Color, Direction};
@@ -24,7 +23,7 @@ pub struct AI {
 
 impl AI {
     pub fn new(color: Color, board: Board, depth: usize) -> Self {
-        AI {
+        Self {
             color,
             board,
             depth,
@@ -39,18 +38,11 @@ impl AI {
     }
 
     fn score_board(&self) -> f32 {
-        let random_addition = get_random_f32() * 2.0 - 1.0; // small random value between -1.0 and 1.0
+        let random_addition = get_random_f32() * 2.0 - 1.0;
         match self.board.winner() {
-            Some(winner_color) => {
-                if winner_color == self.color.clone() {
-                    100.0 + random_addition
-                } else {
-                    -100.0 + random_addition
-                }
-            },
-            None => {
-                random_addition
-            }
+            Some(winner_color) if winner_color == self.color => 100.0 + random_addition,
+            Some(_) => -100.0 + random_addition,
+            None => random_addition,
         }
     }
 
@@ -74,15 +66,12 @@ impl AI {
                     let directions = Direction::iter();
                     for direction in directions {
                         let mut new_board = self.board.clone();
-                        match new_board.move_pawn_until_blocked(pawn_index, &direction) {
-                            true => {
-                                let move_to_record = (pawn_index, direction);
-                                let mut to_insert = HashMap::new();
-                                to_insert.insert(1, vec![new_board]);
-                                next_reached_boards.insert(move_to_record, to_insert);
-                            }
-                            false => ()
-                        };
+                        if new_board.move_pawn_until_blocked(pawn_index, &direction) {
+                            let move_to_record = (pawn_index, direction);
+                            let mut to_insert = HashMap::new();
+                            to_insert.insert(1, vec![new_board]);
+                            next_reached_boards.insert(move_to_record, to_insert);
+                        }
                     }
                 }
             }
@@ -103,14 +92,13 @@ impl AI {
                             let directions = Direction::iter();
                             for direction in directions {
                                 let mut new_board = considered_board.clone();
-                                match new_board.move_pawn_until_blocked(pawn_index, &direction) {
-                                    true => boards_next.push(new_board),
-                                    false => ()
-                                };
+                                if new_board.move_pawn_until_blocked(pawn_index, &direction) {
+                                    boards_next.push(new_board);
+                                }
                             }
                         }
                     }
-                    if boards_next.len() > 0 {
+                    if !boards_next.is_empty() {
                         let entry = next_reached_boards.entry(initial_move.clone()).or_insert(HashMap::new());
                         entry.insert(current_depth + 1, boards_next);
                     }
@@ -137,8 +125,7 @@ impl AI {
                         score_at_this_depth = board_score;
                         if board_score > 0.0 {
                             win = true;
-                        }
-                        else {
+                        } else {
                             lose = true;
                         }
                         break;
@@ -163,13 +150,13 @@ impl AI {
         let mut best_move = (0, Direction::Up);
         let mut best_score = f32::NEG_INFINITY;
         for (move_key, score) in score_per_move.iter() {
-            let direction_string = format!("{:?}", move_key.1);
-            info!("Moving pawn {} in direction {} has score {}", move_key.0, direction_string, score);
+            info!("Moving pawn {} in direction {:?} has score {}", move_key.0, move_key.1, score);
             if *score > best_score {
                 best_score = *score;
                 best_move = move_key.clone();
             }
         }
+        info!("=== CHOSEN MOVE: pawn {} direction {:?} with score {} ===", best_move.0, best_move.1, best_score);
         best_move
     }
 }
