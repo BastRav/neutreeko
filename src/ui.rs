@@ -2,6 +2,8 @@ use std::rc::Rc;
 
 use yew::prelude::*;
 use yew::{html, Component, Context, Html};
+use gloo_timers::future::sleep;
+use std::time::Duration;
 
 use crate::ai::AI;
 use crate::logic::{Board, Direction, Pawn, Position, Color};
@@ -19,6 +21,7 @@ pub enum Msg {
     Restart,
     AiGreen,
     AiYellow,
+    AiMoveReady(Option<(usize, Direction)>),
 }
 
 pub struct App {
@@ -27,6 +30,7 @@ pub struct App {
     direction: Direction,
     ai: Option<Color>,
     ai_depth: usize,
+    ai_thinking: bool,
 }
 
 #[derive(Clone, PartialEq)]
@@ -52,11 +56,12 @@ impl Component for App {
             state,
             direction: Direction::Up,
             ai: None,
-            ai_depth: 4,
+            ai_depth: 5,
+            ai_thinking: false,
         }
     }
 
-    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
+    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::PawnClick(pawn_index) => {
                 let shared_state = Rc::make_mut(&mut self.state);
@@ -66,11 +71,31 @@ impl Component for App {
                 if new_board.move_pawn_until_blocked(pawn_index, &self.direction) {
                     self.board = new_board;
                     if let Some(ai_color) = &self.ai {
-                        let ai_move = AI::new(ai_color.clone(), self.board.clone(), self.ai_depth).ai_play();
-                        if let Some((ai_pawn_index, ai_direction)) = ai_move {
-                            self.board.move_pawn_until_blocked(ai_pawn_index, &ai_direction);
-                        }
+                        // Set AI thinking state
+                        self.ai_thinking = true;
+                        
+                        // Clone data needed for the async task
+                        let board = self.board.clone();
+                        let ai_color = ai_color.clone();
+                        let ai_depth = self.ai_depth;
+                        
+                        // Spawn async task to calculate AI move
+                        let link = ctx.link().clone();
+                        wasm_bindgen_futures::spawn_local(async move {
+                            // Small delay to allow browser to render player's move first
+                            sleep(Duration::from_millis(50)).await;
+                            let ai_move = AI::new(ai_color, board, ai_depth).ai_play();
+                            link.send_message(Msg::AiMoveReady(ai_move));
+                        });
+                        
+                        return true;
                     }
+                }
+            }
+            Msg::AiMoveReady(ai_move) => {
+                self.ai_thinking = false;
+                if let Some((ai_pawn_index, ai_direction)) = ai_move {
+                    self.board.move_pawn_until_blocked(ai_pawn_index, &ai_direction);
                 }
             }
             Msg::Up => {
@@ -100,20 +125,49 @@ impl Component for App {
             Msg::Restart => {
                 self.board = Board::default_new();
                 self.ai = None;
+                self.ai_thinking = false;
             }
             Msg::AiGreen => {
                 self.ai = Some(Color::Yellow);
-                let ai_move = AI::new(Color::Yellow, self.board.clone(), self.ai_depth).ai_play();
-                if let Some((ai_pawn_index, ai_direction)) = ai_move {
-                    self.board.move_pawn_until_blocked(ai_pawn_index, &ai_direction);
-                }
+                
+                // Set AI thinking state
+                self.ai_thinking = true;
+                
+                // Clone data needed for the async task
+                let board = self.board.clone();
+                let ai_depth = self.ai_depth;
+                
+                // Spawn async task to calculate AI move
+                let link = ctx.link().clone();
+                wasm_bindgen_futures::spawn_local(async move {
+                    // Small delay to allow browser to render board state first
+                    sleep(Duration::from_millis(50)).await;
+                    let ai_move = AI::new(Color::Yellow, board, ai_depth).ai_play();
+                    link.send_message(Msg::AiMoveReady(ai_move));
+                });
+                
+                return true;
             }
             Msg::AiYellow => {
                 self.ai = Some(Color::Green);
-                let ai_move = AI::new(Color::Green, self.board.clone(), self.ai_depth).ai_play();
-                if let Some((ai_pawn_index, ai_direction)) = ai_move {
-                    self.board.move_pawn_until_blocked(ai_pawn_index, &ai_direction);
-                }
+                
+                // Set AI thinking state
+                self.ai_thinking = true;
+                
+                // Clone data needed for the async task
+                let board = self.board.clone();
+                let ai_depth = self.ai_depth;
+                
+                // Spawn async task to calculate AI move
+                let link = ctx.link().clone();
+                wasm_bindgen_futures::spawn_local(async move {
+                    // Small delay to allow browser to render board state first
+                    sleep(Duration::from_millis(50)).await;
+                    let ai_move = AI::new(Color::Green, board, ai_depth).ai_play();
+                    link.send_message(Msg::AiMoveReady(ai_move));
+                });
+                
+                return true;
             }
         }
         true
@@ -124,10 +178,16 @@ impl Component for App {
         let next_player_text = match self.board.winner() {
             Some(Color::Green) => "Green wins!".to_string(),
             Some(Color::Yellow) => "Yellow wins!".to_string(),
-            None => match self.board.next_player {
-                Some(Color::Green) => "Green's turn".to_string(),
-                Some(Color::Yellow) => "Yellow's turn".to_string(),
-                None => String::new(),
+            None => {
+                if self.ai_thinking {
+                    "🤔 AI is thinking...".to_string()
+                } else {
+                    match self.board.next_player {
+                        Some(Color::Green) => "Green's turn".to_string(),
+                        Some(Color::Yellow) => "Yellow's turn".to_string(),
+                        None => String::new(),
+                    }
+                }
             }
         };
         
@@ -135,30 +195,33 @@ impl Component for App {
             if *dir == self.direction { "background-color: #004d2f;" } else { "" }
         };
         
+        let button_disabled = if self.ai_thinking { "disabled" } else { "" };
+        let button_opacity = if self.ai_thinking { "opacity: 0.5; cursor: not-allowed;" } else { "" };
+        
         html! {
             <ContextProvider<Rc<AppState>> context={app_state}>
                 <div style="display: flex; flex-direction: column; align-items: left; gap: 10px; margin-bottom: 20px;">
                     <div style="display: flex; gap: 10px; justify-content: left;">
-                        <button style={format!("width: 50px; height: 50px; font-size: 20px; {}", is_active(&Direction::UpLeft))} onclick={ctx.link().callback(|_| Msg::UpLeft)}>{ "↖" }</button>
-                        <button style={format!("width: 50px; height: 50px; font-size: 20px; {}", is_active(&Direction::Up))} onclick={ctx.link().callback(|_| Msg::Up)}>{ "↑" }</button>
-                        <button style={format!("width: 50px; height: 50px; font-size: 20px; {}", is_active(&Direction::UpRight))} onclick={ctx.link().callback(|_| Msg::UpRight)}>{ "↗" }</button>
+                        <button {button_disabled} style={format!("width: 50px; height: 50px; font-size: 20px; {}; {}", is_active(&Direction::UpLeft), button_opacity)} onclick={ctx.link().callback(|_| Msg::UpLeft)}>{ "↖" }</button>
+                        <button {button_disabled} style={format!("width: 50px; height: 50px; font-size: 20px; {}; {}", is_active(&Direction::Up), button_opacity)} onclick={ctx.link().callback(|_| Msg::Up)}>{ "↑" }</button>
+                        <button {button_disabled} style={format!("width: 50px; height: 50px; font-size: 20px; {}; {}", is_active(&Direction::UpRight), button_opacity)} onclick={ctx.link().callback(|_| Msg::UpRight)}>{ "↗" }</button>
                     </div>
                     <div style="display: flex; gap: 10px; justify-content: left;">
-                        <button style={format!("width: 50px; height: 50px; font-size: 20px; {}", is_active(&Direction::Left))} onclick={ctx.link().callback(|_| Msg::Left)}>{ "←" }</button>
+                        <button {button_disabled} style={format!("width: 50px; height: 50px; font-size: 20px; {}; {}", is_active(&Direction::Left), button_opacity)} onclick={ctx.link().callback(|_| Msg::Left)}>{ "←" }</button>
                         <div style="width: 50px; height: 50px;"></div>
-                        <button style={format!("width: 50px; height: 50px; font-size: 20px; {}", is_active(&Direction::Right))} onclick={ctx.link().callback(|_| Msg::Right)}>{ "→" }</button>
+                        <button {button_disabled} style={format!("width: 50px; height: 50px; font-size: 20px; {}; {}", is_active(&Direction::Right), button_opacity)} onclick={ctx.link().callback(|_| Msg::Right)}>{ "→" }</button>
                     </div>
                     <div style="display: flex; gap: 10px; justify-content: left;">
-                        <button style={format!("width: 50px; height: 50px; font-size: 20px; {}", is_active(&Direction::DownLeft))} onclick={ctx.link().callback(|_| Msg::DownLeft)}>{ "↙" }</button>
-                        <button style={format!("width: 50px; height: 50px; font-size: 20px; {}", is_active(&Direction::Down))} onclick={ctx.link().callback(|_| Msg::Down)}>{ "↓" }</button>
-                        <button style={format!("width: 50px; height: 50px; font-size: 20px; {}", is_active(&Direction::DownRight))} onclick={ctx.link().callback(|_| Msg::DownRight)}>{ "↘" }</button>
+                        <button {button_disabled} style={format!("width: 50px; height: 50px; font-size: 20px; {}; {}", is_active(&Direction::DownLeft), button_opacity)} onclick={ctx.link().callback(|_| Msg::DownLeft)}>{ "↙" }</button>
+                        <button {button_disabled} style={format!("width: 50px; height: 50px; font-size: 20px; {}; {}", is_active(&Direction::Down), button_opacity)} onclick={ctx.link().callback(|_| Msg::Down)}>{ "↓" }</button>
+                        <button {button_disabled} style={format!("width: 50px; height: 50px; font-size: 20px; {}; {}", is_active(&Direction::DownRight), button_opacity)} onclick={ctx.link().callback(|_| Msg::DownRight)}>{ "↘" }</button>
                     </div>
                 </div>
                 <h2>{ next_player_text }</h2>
                 <div>
-                    <button onclick={ctx.link().callback(|_| Msg::Restart)}>{ "Restart Game" }</button>
-                    <button onclick={ctx.link().callback(|_| Msg::AiGreen)}>{ "Play against AI as Green" }</button>
-                    <button onclick={ctx.link().callback(|_| Msg::AiYellow)}>{ "Play against AI as Yellow" }</button>
+                    <button {button_disabled} onclick={ctx.link().callback(|_| Msg::Restart)}>{ "Restart Game" }</button>
+                    <button {button_disabled} onclick={ctx.link().callback(|_| Msg::AiGreen)}>{ "Play against AI as Green" }</button>
+                    <button {button_disabled} onclick={ctx.link().callback(|_| Msg::AiYellow)}>{ "Play against AI as Yellow" }</button>
                 </div>
                 <BoardView board={self.board.clone()} />
             </ContextProvider<Rc<AppState>>>
@@ -227,7 +290,7 @@ impl Component for PawnView {
                     u32::from(ctx.props().position.column) * SCALING + MARGIN - 1,
                 )}
             >
-                {ctx.props().index}
+                //{ctx.props().index}
             </div>
         }
     }
