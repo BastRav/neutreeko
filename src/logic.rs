@@ -217,4 +217,16 @@ impl Board {
         }
         valid_directions
     }
+
+    pub fn get_valid_directions_and_resulting_boards(&self, pawn_index: usize) -> Vec<(Direction, Board)> {
+        let mut valid_directions = vec![];
+        let directions = Direction::iter();
+        for direction in directions {
+            let mut new_board = self.clone();
+            if new_board.move_pawn_until_blocked(pawn_index, &direction) {
+                valid_directions.push((direction, new_board));
+            }
+        }
+        valid_directions
+    }
 }

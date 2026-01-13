@@ -82,14 +82,11 @@ impl AI {
                     if pawn.color != color_at_this_depth {
                         continue;
                     }
-                    let directions = considered_board.get_valid_directions(pawn_index);
-                    for direction in directions {
-                        let mut new_board = considered_board.clone();
-                        if new_board.move_pawn_until_blocked(pawn_index, &direction) {
-                            let new_node_index = possible_boards.add_node(BoardEvaluation::new(new_board.clone(), self.color.clone()));
-                            possible_boards.add_edge(*considered_node_index, new_node_index, (pawn_index, direction.clone()));
-                            to_explore_next.push(new_node_index);
-                        }
+                    let directions = considered_board.get_valid_directions_and_resulting_boards(pawn_index);
+                    for (direction, new_board) in directions {
+                        let new_node_index = possible_boards.add_node(BoardEvaluation::new(new_board.clone(), self.color.clone()));
+                        possible_boards.add_edge(*considered_node_index, new_node_index, (pawn_index, direction.clone()));
+                        to_explore_next.push(new_node_index);
                     }
                 }
             }
