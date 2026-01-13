@@ -1,0 +1,91 @@
+/* Container styles */
+.app-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.config-controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.config-controls button {
+    padding: 8px 16px;
+    font-size: 16px;
+    background-color: #f0f0f0;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.config-controls button:hover:not(:disabled) {
+    background-color: #e0e0e0;
+}
+
+.config-controls button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.game-container {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Direction controls container */
+.direction-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* Direction button rows */
+.dir-row {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+}
+
+/* Direction buttons */
+.dir-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.1s, background-color 0.2s;
+    margin: 10px;
+}
+
+.dir-btn:hover {
+    background-color: #45a049;
+    transform: scale(1.1);
+}
+
+.dir-btn:active {
+    transform: scale(0.9);
+}
+
+.dir-spacer {
+    width: 40px;
+    height: 40px;
+    margin: 10px;
+}

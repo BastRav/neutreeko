@@ -1,7 +1,6 @@
 use std::vec;
 
 use crate::logic::{Board, Color, Direction};
-use strum::IntoEnumIterator;
 use wasm_bindgen::prelude::*;
 use log::info;
 use petgraph::Graph;
@@ -83,7 +82,7 @@ impl AI {
                     if pawn.color != color_at_this_depth {
                         continue;
                     }
-                    let directions = Direction::iter();
+                    let directions = considered_board.get_valid_directions(pawn_index);
                     for direction in directions {
                         let mut new_board = considered_board.clone();
                         if new_board.move_pawn_until_blocked(pawn_index, &direction) {

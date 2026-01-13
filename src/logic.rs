@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 use strum_macros::EnumIter;
+use strum::IntoEnumIterator;
 
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
 pub enum Color {
@@ -203,5 +204,17 @@ impl Board {
             };
         }
         has_moved
+    }
+
+    pub fn get_valid_directions(&self, pawn_index: usize) -> Vec<Direction> {
+        let mut valid_directions = vec![];
+        let directions = Direction::iter();
+        for direction in directions {
+            let mut new_board = self.clone();
+            if new_board.move_pawn_until_blocked(pawn_index, &direction) {
+                valid_directions.push(direction);
+            }
+        }
+        valid_directions
     }
 }

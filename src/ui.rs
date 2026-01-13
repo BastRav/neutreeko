@@ -8,16 +8,12 @@ use std::time::Duration;
 use crate::ai::AI;
 use crate::logic::{Board, Direction, Pawn, Position, Color};
 
+const SCALING: u32 = 80;
+
+const MARGIN: u32 = 5;
 pub enum Msg {
     PawnClick(usize),
-    Left,
-    Right,
-    Up,
-    Down,
-    UpLeft,
-    UpRight,
-    DownLeft,
-    DownRight,
+    DirectionClick(Direction),
     Restart,
     AiGreen,
     AiYellow,
@@ -27,16 +23,16 @@ pub enum Msg {
 pub struct App {
     board: Board,
     state: Rc<AppState>,
-    direction: Direction,
     ai: Option<Color>,
     ai_depth: usize,
     ai_thinking: bool,
+    selected_pawn: Option<usize>,
 }
 
 #[derive(Clone, PartialEq)]
 pub struct AppState {
     pawn_clicked: Callback<usize>,
-    last_clicked: Option<usize>
+    direction_clicked: Callback<Direction>,
 }
 
 impl Component for App {
@@ -45,50 +41,57 @@ impl Component for App {
 
     fn create(ctx: &Context<Self>) -> Self {
         let pawn_clicked = ctx.link().callback(Msg::PawnClick);
+        let direction_clicked = ctx.link().callback(Msg::DirectionClick);
         let state = Rc::new(AppState {
             pawn_clicked,
-            last_clicked: None
+            direction_clicked,
         });
 
         let board = Board::default_new();
         Self {
             board,
             state,
-            direction: Direction::Up,
             ai: None,
             ai_depth: 5,
             ai_thinking: false,
+            selected_pawn: None,
         }
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::PawnClick(pawn_index) => {
-                let shared_state = Rc::make_mut(&mut self.state);
-                shared_state.last_clicked = Some(pawn_index);
+                if self.board.next_player == Some(self.board.pawns[pawn_index].color.clone()){
+                    self.selected_pawn = Some(pawn_index);
+                }
+            }
+            Msg::DirectionClick(direction) => {
+                if let Some(pawn_index) = self.selected_pawn {
+                    let mut new_board = self.board.clone();
+                    if new_board.move_pawn_until_blocked(pawn_index, &direction) {
+                        self.board = new_board;
+                        self.selected_pawn = None;
 
-                let mut new_board = self.board.clone();
-                if new_board.move_pawn_until_blocked(pawn_index, &self.direction) {
-                    self.board = new_board;
-                    if let Some(ai_color) = &self.ai {
-                        // Set AI thinking state
-                        self.ai_thinking = true;
-                        
-                        // Clone data needed for the async task
-                        let board = self.board.clone();
-                        let ai_color = ai_color.clone();
-                        let ai_depth = self.ai_depth;
-                        
-                        // Spawn async task to calculate AI move
-                        let link = ctx.link().clone();
-                        wasm_bindgen_futures::spawn_local(async move {
-                            // Small delay to allow browser to render player's move first
-                            sleep(Duration::from_millis(50)).await;
-                            let ai_move = AI::new(ai_color, board, ai_depth).ai_play();
-                            link.send_message(Msg::AiMoveReady(ai_move));
-                        });
-                        
-                        return true;
+                        if let Some(ai_color) = &self.ai {
+                            // Set AI thinking state
+                            self.ai_thinking = true;
+                            
+                            // Clone data needed for the async task
+                            let board = self.board.clone();
+                            let ai_color = ai_color.clone();
+                            let ai_depth = self.ai_depth;
+                            
+                            // Spawn async task to calculate AI move
+                            let link = ctx.link().clone();
+                            wasm_bindgen_futures::spawn_local(async move {
+                                // Small delay to allow browser to render player's move first
+                                sleep(Duration::from_millis(50)).await;
+                                let ai_move = AI::new(ai_color, board, ai_depth).ai_play();
+                                link.send_message(Msg::AiMoveReady(ai_move));
+                            });
+                            
+                            return true;
+                        }
                     }
                 }
             }
@@ -98,37 +101,15 @@ impl Component for App {
                     self.board.move_pawn_until_blocked(ai_pawn_index, &ai_direction);
                 }
             }
-            Msg::Up => {
-                self.direction = Direction::Up;
-            }
-            Msg::Down => {
-                self.direction = Direction::Down;
-            }
-            Msg::Left => {
-                self.direction = Direction::Left;
-            }
-            Msg::Right => {
-                self.direction = Direction::Right;
-            }
-            Msg::UpLeft => {
-                self.direction = Direction::UpLeft;
-            }
-            Msg::UpRight => {
-                self.direction = Direction::UpRight;
-            }
-            Msg::DownLeft => {
-                self.direction = Direction::DownLeft;
-            }
-            Msg::DownRight => {
-                self.direction = Direction::DownRight;
-            }
             Msg::Restart => {
                 self.board = Board::default_new();
+                self.selected_pawn = None;
                 self.ai = None;
                 self.ai_thinking = false;
             }
             Msg::AiGreen => {
                 self.ai = Some(Color::Yellow);
+                self.selected_pawn = None;
                 
                 // Set AI thinking state
                 self.ai_thinking = true;
@@ -150,6 +131,7 @@ impl Component for App {
             }
             Msg::AiYellow => {
                 self.ai = Some(Color::Green);
+                self.selected_pawn = None;
                 
                 // Set AI thinking state
                 self.ai_thinking = true;
@@ -191,43 +173,90 @@ impl Component for App {
             }
         };
         
-        let is_active = |dir: &Direction| -> &str {
-            if *dir == self.direction { "background-color: #004d2f;" } else { "" }
+        // Configuration controls (AI selection, restart)
+        let config_view = html! {
+            <div class="config-controls">
+                <button onclick={ctx.link().callback(|_| Msg::Restart)}>{ "Restart Game" }</button>
+                <button onclick={ctx.link().callback(|_| Msg::AiGreen)}>{ "Play against AI as Green" }</button>
+                <button onclick={ctx.link().callback(|_| Msg::AiYellow)}>{ "Play against AI as Yellow" }</button>
+            </div>
         };
-        
-        let button_disabled = if self.ai_thinking { "disabled" } else { "" };
-        let button_opacity = if self.ai_thinking { "opacity: 0.5; cursor: not-allowed;" } else { "" };
-        
+
+        // Game board and pawns
+        let game_view = html! {
+            <div class="game-container">
+                <BoardView board={self.board.clone()} selected_pawn={self.selected_pawn} />
+
+                // Direction buttons positioned around selected pawn
+                {self.render_direction_buttons(ctx)}
+            </div>
+        };
+
         html! {
             <ContextProvider<Rc<AppState>> context={app_state}>
-                <div style="display: flex; flex-direction: column; align-items: left; gap: 10px; margin-bottom: 20px;">
-                    <div style="display: flex; gap: 10px; justify-content: left;">
-                        <button {button_disabled} style={format!("width: 50px; height: 50px; font-size: 20px; {}; {}", is_active(&Direction::UpLeft), button_opacity)} onclick={ctx.link().callback(|_| Msg::UpLeft)}>{ "↖" }</button>
-                        <button {button_disabled} style={format!("width: 50px; height: 50px; font-size: 20px; {}; {}", is_active(&Direction::Up), button_opacity)} onclick={ctx.link().callback(|_| Msg::Up)}>{ "↑" }</button>
-                        <button {button_disabled} style={format!("width: 50px; height: 50px; font-size: 20px; {}; {}", is_active(&Direction::UpRight), button_opacity)} onclick={ctx.link().callback(|_| Msg::UpRight)}>{ "↗" }</button>
-                    </div>
-                    <div style="display: flex; gap: 10px; justify-content: left;">
-                        <button {button_disabled} style={format!("width: 50px; height: 50px; font-size: 20px; {}; {}", is_active(&Direction::Left), button_opacity)} onclick={ctx.link().callback(|_| Msg::Left)}>{ "←" }</button>
-                        <div style="width: 50px; height: 50px;"></div>
-                        <button {button_disabled} style={format!("width: 50px; height: 50px; font-size: 20px; {}; {}", is_active(&Direction::Right), button_opacity)} onclick={ctx.link().callback(|_| Msg::Right)}>{ "→" }</button>
-                    </div>
-                    <div style="display: flex; gap: 10px; justify-content: left;">
-                        <button {button_disabled} style={format!("width: 50px; height: 50px; font-size: 20px; {}; {}", is_active(&Direction::DownLeft), button_opacity)} onclick={ctx.link().callback(|_| Msg::DownLeft)}>{ "↙" }</button>
-                        <button {button_disabled} style={format!("width: 50px; height: 50px; font-size: 20px; {}; {}", is_active(&Direction::Down), button_opacity)} onclick={ctx.link().callback(|_| Msg::Down)}>{ "↓" }</button>
-                        <button {button_disabled} style={format!("width: 50px; height: 50px; font-size: 20px; {}; {}", is_active(&Direction::DownRight), button_opacity)} onclick={ctx.link().callback(|_| Msg::DownRight)}>{ "↘" }</button>
-                    </div>
+                <div class="app-container">
+                    {config_view}
+                    <h2>{ next_player_text }</h2>
+                    {game_view}
                 </div>
-                <h2>{ next_player_text }</h2>
-                <div>
-                    <button {button_disabled} onclick={ctx.link().callback(|_| Msg::Restart)}>{ "Restart Game" }</button>
-                    <button {button_disabled} onclick={ctx.link().callback(|_| Msg::AiGreen)}>{ "Play against AI as Green" }</button>
-                    <button {button_disabled} onclick={ctx.link().callback(|_| Msg::AiYellow)}>{ "Play against AI as Yellow" }</button>
-                </div>
-                <BoardView board={self.board.clone()} />
             </ContextProvider<Rc<AppState>>>
         }
     }
+}
 
+impl App {
+    fn render_direction_buttons(&self, ctx: &Context<Self>) -> Html {
+        if let Some(pawn_index) = self.selected_pawn {
+            let pawn = &self.board.pawns[pawn_index];
+            let valid_directions = self.board.get_valid_directions(pawn_index);
+
+            let scaling_i32 = SCALING as i32;
+            let controls_size = 180;
+
+            let top = 50 + i32::from(pawn.position.row) * scaling_i32 - (controls_size - scaling_i32) / 2;
+            let left = ((f64::from(pawn.position.column) + 0.5 - f64::from(self.board.number_of_columns) / 2.0 ) * f64::from(SCALING)) as i32;
+
+            html! {
+                <div class="direction-controls" style={format!("position: relative; top: {}px; left: {}px;", top, left)}>
+                    <div class="dir-row">
+                        {self.render_direction_button(ctx, Direction::UpLeft, &valid_directions, "↖")}
+                        {self.render_direction_button(ctx, Direction::Up, &valid_directions, "↑")}
+                        {self.render_direction_button(ctx, Direction::UpRight, &valid_directions, "↗")}
+                    </div>
+                    <div class="dir-row">
+                        {self.render_direction_button(ctx, Direction::Left, &valid_directions, "←")}
+                        <div class="dir-spacer"></div>
+                        {self.render_direction_button(ctx, Direction::Right, &valid_directions, "→")}
+                    </div>
+                    <div class="dir-row">
+                        {self.render_direction_button(ctx, Direction::DownLeft, &valid_directions, "↙")}
+                        {self.render_direction_button(ctx, Direction::Down, &valid_directions, "↓")}
+                        {self.render_direction_button(ctx, Direction::DownRight, &valid_directions, "↘")}
+                    </div>
+                </div>
+                }
+        } else {
+            html! {}
+        }
+    }
+
+    fn render_direction_button(&self, ctx: &Context<Self>, direction: Direction, valid_directions: &Vec<Direction>, symbol: &str) -> Html {
+        let is_valid = valid_directions.contains(&direction);
+        if is_valid {
+            html! {
+                <button
+                    class="dir-btn"
+                    onclick={ctx.link().callback(move |_| Msg::DirectionClick(direction.clone()))}
+                >
+                    {symbol}
+                </button>
+            }
+        } else {
+            html! {
+                <div class="dir-spacer"></div>
+            }
+        }
+    }
 }
 
 pub struct PawnView{
@@ -239,12 +268,9 @@ pub struct PawnView{
 pub struct PawnComponent {
     pub pawn: Pawn,
     pub position: Position,
-    pub index: usize
+    pub index: usize,
+    pub selected: bool,
 }
-
-const SCALING: u32 = 80;
-
-const MARGIN: u32 = 5;
 
 pub enum PawnMsg {
     ContextChanged(Rc<AppState>),
@@ -275,22 +301,31 @@ impl Component for PawnView {
     fn view(&self, ctx: &Context<Self>) -> Html {
         let my_index = ctx.props().index;
         let onclick = self.state.pawn_clicked.reform(move |_| my_index);
+
+        // Add selection highlight
+        let border_style = if ctx.props().selected {
+            "border: 3px solid red;"
+        } else {
+            "border: 2px solid black;"
+        };
+
         html! {
             <div
                 onclick={onclick}
                 style={format!(
-                    "width: {}px; height: {}px; background-color: {}; position: absolute; top: {}px; left: {}px; border-radius: 50%; border: 2px solid black; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: bold; color: black;",
+                    "width: {}px; height: {}px; background-color: {}; position: absolute; top: {}px; left: {}px; border-radius: 50%; {}; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: bold; color: black;",
                     SCALING - MARGIN * 2,
                     SCALING - MARGIN * 2,
                     match ctx.props().pawn.color {
                         Color::Green => "green",
                         Color::Yellow => "yellow",
                     },
-                    u32::from(ctx.props().position.row) * SCALING + MARGIN - 1,
-                    u32::from(ctx.props().position.column) * SCALING + MARGIN - 1,
+                    u32::from(ctx.props().position.row) * SCALING + MARGIN,
+                    u32::from(ctx.props().position.column) * SCALING + MARGIN,
+                    border_style,
                 )}
             >
-                //{ctx.props().index}
+                //{my_index}
             </div>
         }
     }
@@ -301,6 +336,7 @@ pub struct BoardView;
 #[derive(Clone, Properties, PartialEq)]
 pub struct BoardComponent {
     pub board: Board,
+    pub selected_pawn: Option<usize>,
 }
  
 impl Component for BoardView {
@@ -315,13 +351,18 @@ impl Component for BoardView {
         let mut pawns = Vec::new();
         for (index, pawn) in ctx.props().board.pawns.iter().enumerate() {
             pawns.push(html! {
-                <PawnView pawn={pawn.clone()} position={pawn.position.clone()} index={index} />
+                <PawnView
+                    pawn={pawn.clone()}
+                    position={pawn.position.clone()}
+                    index={index}
+                    selected={ctx.props().selected_pawn == Some(index)}
+                />
             });
         }
         html! {
             <div style={format!(
-                "position: relative; top: {}px; width: {}px; height: {}px; background-image: linear-gradient(0deg, #e0e0e0 1px, transparent 1px), linear-gradient(90deg, #e0e0e0 1px, transparent 1px); background-size: {}px {}px; background-position: 0 0; border-top: 1px solid #e0e0e0; border-left: 1px solid #e0e0e0; border-right: 1px solid #e0e0e0; border-bottom: 1px solid #e0e0e0;",
-                MARGIN,
+                "position: absolute; top: {}px; width: {}px; height: {}px; background-image: linear-gradient(0deg, #e0e0e0 1px, transparent 1px), linear-gradient(90deg, #e0e0e0 1px, transparent 1px); background-size: {}px {}px; background-position: 0 0; border-top: 1px solid #e0e0e0; border-left: 1px solid #e0e0e0; border-right: 1px solid #e0e0e0; border-bottom: 1px solid #e0e0e0;",
+                50,
                 SCALING * ctx.props().board.number_of_columns as u32,
                 SCALING * ctx.props().board.number_of_rows as u32,
                 SCALING, SCALING
