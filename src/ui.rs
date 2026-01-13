@@ -320,8 +320,8 @@ impl Component for PawnView {
                         Color::Green => "green",
                         Color::Yellow => "yellow",
                     },
-                    u32::from(ctx.props().position.row) * SCALING + MARGIN,
-                    u32::from(ctx.props().position.column) * SCALING + MARGIN,
+                    u32::from(ctx.props().position.row) * SCALING + MARGIN - 2,
+                    u32::from(ctx.props().position.column) * SCALING + MARGIN - 2,
                     border_style,
                 )}
             >
@@ -342,11 +342,11 @@ pub struct BoardComponent {
 impl Component for BoardView {
     type Message = ();
     type Properties = BoardComponent;
- 
+
     fn create(_ctx: &Context<Self>) -> Self {
         Self {}
     }
- 
+
     fn view(&self, ctx: &Context<Self>) -> Html {
         let mut pawns = Vec::new();
         for (index, pawn) in ctx.props().board.pawns.iter().enumerate() {
@@ -361,7 +361,7 @@ impl Component for BoardView {
         }
         html! {
             <div style={format!(
-                "position: absolute; top: {}px; width: {}px; height: {}px; background-image: linear-gradient(0deg, #e0e0e0 1px, transparent 1px), linear-gradient(90deg, #e0e0e0 1px, transparent 1px); background-size: {}px {}px; background-position: 0 0; border-top: 1px solid #e0e0e0; border-left: 1px solid #e0e0e0; border-right: 1px solid #e0e0e0; border-bottom: 1px solid #e0e0e0;",
+                "position: absolute; top: {}px; width: {}px; height: {}px; background-image: linear-gradient(0deg, #e0e0e0 1px, transparent 1px), linear-gradient(90deg, #e0e0e0 1px, transparent 1px); background-size: {}px {}px; background-position: 0 0; border: 1px solid #e0e0e0;",
                 50,
                 SCALING * ctx.props().board.number_of_columns as u32,
                 SCALING * ctx.props().board.number_of_rows as u32,
