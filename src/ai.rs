@@ -23,15 +23,15 @@ pub struct BoardEvaluation {
 }
 
 impl BoardEvaluation {
-    pub fn new(board: Board, color: Color) -> Self {
-        Self { board: board.clone(), color: color.clone(), score: Self::score_board(&board, &color) }
+    pub fn new(board: Board, color: Color, depth: usize) -> Self {
+        Self { board: board.clone(), color: color.clone(), score: Self::score_board(&board, &color, depth as f32) }
     }
 
-    fn score_board(board: &Board, color: &Color) -> f32 {
+    fn score_board(board: &Board, color: &Color, depth:f32) -> f32 {
         let random_addition = get_random_f32() * 2.0 - 1.0;
         match board.winner() {
-            Some(winner_color) if winner_color == *color => 100.0 + random_addition,
-            Some(_) => -100.0 + random_addition,
+            Some(winner_color) if winner_color == *color => 100.0 - depth + random_addition,
+            Some(_) => -100.0 + depth + random_addition,
             None => random_addition,
         }
     }
@@ -61,7 +61,7 @@ impl AI {
 
     fn best_move(&self) -> (usize, Direction) {
         let mut possible_boards = Graph::<BoardEvaluation, (usize, Direction)>::new();
-        let origin = possible_boards.add_node(BoardEvaluation::new(self.board.clone(), self.color.clone()));
+        let origin = possible_boards.add_node(BoardEvaluation::new(self.board.clone(), self.color.clone(), 0));
         let mut to_explore = vec![origin];
         for current_depth in 0..self.depth {
             let color_at_this_depth = if current_depth % 2 == 0 {
@@ -84,7 +84,7 @@ impl AI {
                     }
                     let directions = considered_board.get_valid_directions_and_resulting_boards(pawn_index);
                     for (direction, new_board) in directions {
-                        let new_node_index = possible_boards.add_node(BoardEvaluation::new(new_board.clone(), self.color.clone()));
+                        let new_node_index = possible_boards.add_node(BoardEvaluation::new(new_board.clone(), self.color.clone(), current_depth + 1));
                         possible_boards.add_edge(*considered_node_index, new_node_index, (pawn_index, direction.clone()));
                         to_explore_next.push(new_node_index);
                     }
