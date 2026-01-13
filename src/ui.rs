@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use yew::prelude::*;
 use yew::{html, Component, Context, Html};
+use web_sys::HtmlSelectElement;
 use gloo_timers::future::sleep;
 use std::time::Duration;
 
@@ -18,6 +19,7 @@ pub enum Msg {
     AiGreen,
     AiYellow,
     AiMoveReady(Option<(usize, Direction)>),
+    SetDifficulty(usize),
 }
 
 pub struct App {
@@ -60,6 +62,9 @@ impl Component for App {
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
+            Msg::SetDifficulty(depth) => {
+                self.ai_depth = depth;
+            }
             Msg::PawnClick(pawn_index) => {
                 if self.board.next_player == Some(self.board.pawns[pawn_index].color.clone()){
                     self.selected_pawn = Some(pawn_index);
@@ -177,6 +182,23 @@ impl Component for App {
         let config_view = html! {
             <div class="config-controls">
                 <button onclick={ctx.link().callback(|_| Msg::Restart)}>{ "Restart Game" }</button>
+                <div class="difficulty-selector">
+                    <label>{ "AI Difficulty: " }</label>
+                    <select
+                        onchange={ctx.link().callback(|e: Event| {
+                            let input: HtmlSelectElement = e.target_unchecked_into();
+                            Msg::SetDifficulty(input.value().parse().unwrap_or(3))
+                        })}
+                    >
+                    <option value="1" selected={self.ai_depth == 1}>{ "Very Easy (Depth: 1)" }</option>
+                    <option value="2" selected={self.ai_depth == 2}>{ "Easy (Depth: 2)" }</option>
+                    <option value="3" selected={self.ai_depth == 3}>{ "Medium (Depth: 3)" }</option>
+                    <option value="4" selected={self.ai_depth == 4}>{ "Hard (Depth: 4)" }</option>
+                    <option value="5" selected={self.ai_depth == 5}>{ "Very Hard (Depth: 5)" }</option>
+                    <option value="6" selected={self.ai_depth == 6}>{ "Expert (Depth: 6)" }</option>
+                    <option value="7" selected={self.ai_depth == 7}>{ "Master (Depth: 7)" }</option>
+                    </select>
+                </div>
                 <button onclick={ctx.link().callback(|_| Msg::AiGreen)}>{ "Play against AI as Green" }</button>
                 <button onclick={ctx.link().callback(|_| Msg::AiYellow)}>{ "Play against AI as Yellow" }</button>
             </div>
