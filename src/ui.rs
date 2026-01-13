@@ -54,7 +54,7 @@ impl Component for App {
             board,
             state,
             ai: None,
-            ai_depth: 5,
+            ai_depth: 4,
             ai_thinking: false,
             selected_pawn: None,
         }
@@ -187,7 +187,7 @@ impl Component for App {
                     <select
                         onchange={ctx.link().callback(|e: Event| {
                             let input: HtmlSelectElement = e.target_unchecked_into();
-                            Msg::SetDifficulty(input.value().parse().unwrap_or(3))
+                            Msg::SetDifficulty(input.value().parse().unwrap_or(4))
                         })}
                     >
                     <option value="1" selected={self.ai_depth == 1}>{ "Very Easy (Depth: 1)" }</option>
@@ -196,7 +196,6 @@ impl Component for App {
                     <option value="4" selected={self.ai_depth == 4}>{ "Hard (Depth: 4)" }</option>
                     <option value="5" selected={self.ai_depth == 5}>{ "Very Hard (Depth: 5)" }</option>
                     <option value="6" selected={self.ai_depth == 6}>{ "Expert (Depth: 6)" }</option>
-                    <option value="7" selected={self.ai_depth == 7}>{ "Master (Depth: 7)" }</option>
                     </select>
                 </div>
                 <button onclick={ctx.link().callback(|_| Msg::AiGreen)}>{ "Play against AI as Green" }</button>

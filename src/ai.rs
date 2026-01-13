@@ -5,6 +5,7 @@ use wasm_bindgen::prelude::*;
 use log::info;
 use petgraph::Graph;
 use petgraph::visit::EdgeRef;
+use petgraph::prelude::NodeIndex;
 
 #[wasm_bindgen]
 extern "C" {
@@ -19,20 +20,22 @@ fn get_random_f32() -> f32 {
 pub struct BoardEvaluation {
     pub board: Board,
     pub color: Color,
-    pub score: f32,
+    pub score: isize,
+    pub depth: usize,
 }
 
 impl BoardEvaluation {
     pub fn new(board: Board, color: Color, depth: usize) -> Self {
-        Self { board: board.clone(), color: color.clone(), score: Self::score_board(&board, &color, depth as f32) }
+        let mut a = Self { board: board, color: color, score: 0, depth: depth};
+        a.score_board();
+        a
     }
 
-    fn score_board(board: &Board, color: &Color, depth:f32) -> f32 {
-        let random_addition = get_random_f32() * 2.0 - 1.0;
-        match board.winner() {
-            Some(winner_color) if winner_color == *color => 100.0 - depth + random_addition,
-            Some(_) => -100.0 + depth + random_addition,
-            None => random_addition,
+    fn score_board(&mut self) {
+        match self.board.winner() {
+            Some(winner_color) if winner_color == self.color => self.score = 100 - self.depth as isize,
+            Some(_) => self.score = -100 + self.depth as isize,
+            None => self.score = 0,
         }
     }
 }
@@ -92,14 +95,17 @@ impl AI {
             }
             to_explore = to_explore_next;
         }
-        let mut best_score = f32::MIN;
+        let mut best_score = isize::MIN;
         let mut best_move_found = possible_boards.edges(origin).next().unwrap().weight().clone();
         for edge in possible_boards.edges(origin) {
             let target_node_index = edge.target();
-            let minmax = self.minmax_score(&possible_boards, target_node_index, self.depth - 1);
+            let minmax = self.minmax_score(&possible_boards, target_node_index, self.depth - 1, isize::MIN, isize::MAX, false);
             info!("Considering move {:?} with minmax score {}", edge.weight(), minmax);
             if minmax > best_score {
                 best_score = minmax;
+                best_move_found = edge.weight().clone();
+            }
+            if minmax == best_score && get_random_f32() < 0.3 {
                 best_move_found = edge.weight().clone();
             }
         }
@@ -107,23 +113,33 @@ impl AI {
         best_move_found
     }
 
-    fn minmax_score(&self, graph: &Graph<BoardEvaluation, (usize, Direction)>, node_index: petgraph::prelude::NodeIndex, depth_remaining: usize) -> f32 {
+    fn minmax_score(&self, graph: &Graph<BoardEvaluation, (usize, Direction)>, node_index: NodeIndex, depth_remaining: usize, mut alpha: isize, mut beta: isize, maximizing_player: bool) -> isize {
         if depth_remaining == 0 {
             return graph.node_weight(node_index).unwrap().score;
         }
-        let mut scores = Vec::new();
+
+        let mut value = if maximizing_player { isize::MIN } else { isize::MAX };
+        let mut at_least_one_edge = false;
         for edge in graph.edges(node_index) {
+            at_least_one_edge = true;
             let target_node_index = edge.target();
-            let score = self.minmax_score(graph, target_node_index, depth_remaining - 1);
-            scores.push(score);
+            let score = self.minmax_score(graph, target_node_index, depth_remaining - 1, alpha, beta, !maximizing_player);
+
+            if maximizing_player {
+                value = value.max(score);
+                alpha = alpha.max(value);
+            } else {
+                value = value.min(score);
+                beta = beta.min(value);
+            }
+
+            if beta <= alpha {
+                break; // Alpha-beta pruning
+            }
         }
-        if scores.is_empty() {
-            return graph.node_weight(node_index).unwrap().score;
+        if !at_least_one_edge {
+            value = graph.node_weight(node_index).unwrap().score;
         }
-        if (self.depth - depth_remaining) % 2 == 0 {
-            *scores.iter().max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap()
-        } else {
-            *scores.iter().min_by(|a, b| a.partial_cmp(b).unwrap()).unwrap()
-        }
+        value
     }
 }
