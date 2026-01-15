@@ -6,6 +6,8 @@ use web_sys::HtmlSelectElement;
 use gloo_timers::future::sleep;
 use std::time::Duration;
 
+use crate::minmax::MinMax;
+use crate::mcts::MCTS;
 use crate::ai::AI;
 use crate::logic::{Board, Direction, Pawn, Position, Color};
 
@@ -16,19 +18,42 @@ pub enum Msg {
     PawnClick(usize),
     DirectionClick(Direction),
     Restart,
-    AiGreen,
-    AiYellow,
+    CreateAi(Color),
+    AiShouldPlay,
     AiMoveReady(Option<(usize, Direction)>),
     SetDifficulty(usize),
+    SetAiType(usize),
+}
+
+pub enum AiType {
+    None,
+    MinMax(MinMax),
+    MCTS(MCTS),
 }
 
 pub struct App {
     board: Board,
     state: Rc<AppState>,
-    ai: Option<Color>,
-    ai_depth: usize,
+    ai: AiType,
     ai_thinking: bool,
     selected_pawn: Option<usize>,
+    difficulty_selected: usize,
+    ai_type_selected: usize,
+}
+
+impl App {
+    pub fn create_ai(&mut self, color:Color) {
+        if self.ai_type_selected == 0 {
+            ()
+        } else if self.ai_type_selected == 1 {
+            self.ai = AiType::MinMax(MinMax::new(color, self.difficulty_selected));
+        } else if self.ai_type_selected == 2 {
+            self.ai = AiType::MCTS(MCTS::new(color, self.difficulty_selected));
+        }
+        else {
+            panic!("AI Type not implemented!")
+        }
+    }
 }
 
 #[derive(Clone, PartialEq)]
@@ -53,17 +78,21 @@ impl Component for App {
         Self {
             board,
             state,
-            ai: None,
-            ai_depth: 4,
+            ai: AiType::None,
             ai_thinking: false,
             selected_pawn: None,
+            difficulty_selected: 4,
+            ai_type_selected: 0,
         }
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
-            Msg::SetDifficulty(depth) => {
-                self.ai_depth = depth;
+            Msg::SetAiType(ai_type) => {
+                self.ai_type_selected = ai_type;
+            }
+            Msg::SetDifficulty(difficulty) => {
+                self.difficulty_selected = difficulty;
             }
             Msg::PawnClick(pawn_index) => {
                 if self.board.next_player == Some(self.board.pawns[pawn_index].color.clone()){
@@ -77,26 +106,42 @@ impl Component for App {
                         self.board = new_board;
                         self.selected_pawn = None;
 
-                        if let Some(ai_color) = &self.ai {
-                            // Set AI thinking state
-                            self.ai_thinking = true;
-                            
-                            // Clone data needed for the async task
-                            let board = self.board.clone();
-                            let ai_color = ai_color.clone();
-                            let ai_depth = self.ai_depth;
-                            
-                            // Spawn async task to calculate AI move
-                            let link = ctx.link().clone();
-                            wasm_bindgen_futures::spawn_local(async move {
-                                // Small delay to allow browser to render player's move first
-                                sleep(Duration::from_millis(50)).await;
-                                let ai_move = AI::new(ai_color, board, ai_depth).ai_play();
-                                link.send_message(Msg::AiMoveReady(ai_move));
-                            });
-                            
-                            return true;
-                        }
+                        ctx.link().send_message(Msg::AiShouldPlay);
+                    }
+                }
+            }
+            Msg::AiShouldPlay => {
+                match &self.ai {
+                    AiType::None => (),
+                    AiType::MinMax(ai) => {
+                        // Set AI thinking state
+                        self.ai_thinking = true;
+                        
+                        // Spawn async task to calculate AI move
+                        let board = self.board.clone();
+                        let link = ctx.link().clone();
+                        let mut ai = ai.clone();
+                        wasm_bindgen_futures::spawn_local(async move {
+                            // Small delay to allow browser to render player's move first
+                            sleep(Duration::from_millis(50)).await;
+                            let ai_move = ai.ai_play(&board);
+                            link.send_message(Msg::AiMoveReady(ai_move));
+                    });
+                    }
+                    AiType::MCTS(ai) => {
+                        // Set AI thinking state
+                        self.ai_thinking = true;
+                        
+                        // Spawn async task to calculate AI move
+                        let board = self.board.clone();
+                        let link = ctx.link().clone();
+                        let mut ai = ai.clone();
+                        wasm_bindgen_futures::spawn_local(async move {
+                            // Small delay to allow browser to render player's move first
+                            sleep(Duration::from_millis(50)).await;
+                            let ai_move = ai.ai_play(&board);
+                            link.send_message(Msg::AiMoveReady(ai_move));
+                        });
                     }
                 }
             }
@@ -109,52 +154,12 @@ impl Component for App {
             Msg::Restart => {
                 self.board = Board::default_new();
                 self.selected_pawn = None;
-                self.ai = None;
+                self.ai = AiType::None;
                 self.ai_thinking = false;
             }
-            Msg::AiGreen => {
-                self.ai = Some(Color::Yellow);
-                self.selected_pawn = None;
-                
-                // Set AI thinking state
-                self.ai_thinking = true;
-                
-                // Clone data needed for the async task
-                let board = self.board.clone();
-                let ai_depth = self.ai_depth;
-                
-                // Spawn async task to calculate AI move
-                let link = ctx.link().clone();
-                wasm_bindgen_futures::spawn_local(async move {
-                    // Small delay to allow browser to render board state first
-                    sleep(Duration::from_millis(50)).await;
-                    let ai_move = AI::new(Color::Yellow, board, ai_depth).ai_play();
-                    link.send_message(Msg::AiMoveReady(ai_move));
-                });
-                
-                return true;
-            }
-            Msg::AiYellow => {
-                self.ai = Some(Color::Green);
-                self.selected_pawn = None;
-                
-                // Set AI thinking state
-                self.ai_thinking = true;
-                
-                // Clone data needed for the async task
-                let board = self.board.clone();
-                let ai_depth = self.ai_depth;
-                
-                // Spawn async task to calculate AI move
-                let link = ctx.link().clone();
-                wasm_bindgen_futures::spawn_local(async move {
-                    // Small delay to allow browser to render board state first
-                    sleep(Duration::from_millis(50)).await;
-                    let ai_move = AI::new(Color::Green, board, ai_depth).ai_play();
-                    link.send_message(Msg::AiMoveReady(ai_move));
-                });
-                
-                return true;
+            Msg::CreateAi(color) => {
+                self.create_ai(color);
+                ctx.link().send_message(Msg::AiShouldPlay);
             }
         }
         true
@@ -183,6 +188,19 @@ impl Component for App {
             <div class="config-controls">
                 <button onclick={ctx.link().callback(|_| Msg::Restart)}>{ "Restart Game" }</button>
                 <div class="difficulty-selector">
+                    <label>{ "AI Type: " }</label>
+                    <select
+                        onchange={ctx.link().callback(|e: Event| {
+                            let input: HtmlSelectElement = e.target_unchecked_into();
+                            Msg::SetAiType(input.value().parse().unwrap_or(0))
+                        })}
+                    >
+                    <option value="0" selected={self.ai_type_selected == 0}>{ "None" }</option>
+                    <option value="1" selected={self.ai_type_selected == 1}>{ "MinMax" }</option>
+                    <option value="2" selected={self.ai_type_selected == 2}>{ "MCTS" }</option>
+                    </select>
+                </div>
+                <div class="difficulty-selector">
                     <label>{ "AI Difficulty: " }</label>
                     <select
                         onchange={ctx.link().callback(|e: Event| {
@@ -190,16 +208,16 @@ impl Component for App {
                             Msg::SetDifficulty(input.value().parse().unwrap_or(4))
                         })}
                     >
-                    <option value="1" selected={self.ai_depth == 1}>{ "Very Easy (Depth: 1)" }</option>
-                    <option value="2" selected={self.ai_depth == 2}>{ "Easy (Depth: 2)" }</option>
-                    <option value="3" selected={self.ai_depth == 3}>{ "Medium (Depth: 3)" }</option>
-                    <option value="4" selected={self.ai_depth == 4}>{ "Hard (Depth: 4)" }</option>
-                    <option value="5" selected={self.ai_depth == 5}>{ "Very Hard (Depth: 5)" }</option>
-                    <option value="6" selected={self.ai_depth == 6}>{ "Expert (Depth: 6)" }</option>
+                    <option value="1" selected={self.difficulty_selected == 1}>{ "Very Easy" }</option>
+                    <option value="2" selected={self.difficulty_selected == 2}>{ "Easy" }</option>
+                    <option value="3" selected={self.difficulty_selected == 3}>{ "Medium" }</option>
+                    <option value="4" selected={self.difficulty_selected == 4}>{ "Hard" }</option>
+                    <option value="5" selected={self.difficulty_selected == 5}>{ "Very Hard" }</option>
+                    <option value="6" selected={self.difficulty_selected == 6}>{ "Expert" }</option>
                     </select>
                 </div>
-                <button onclick={ctx.link().callback(|_| Msg::AiGreen)}>{ "Play against AI as Green" }</button>
-                <button onclick={ctx.link().callback(|_| Msg::AiYellow)}>{ "Play against AI as Yellow" }</button>
+                <button onclick={ctx.link().callback(|_| Msg::CreateAi(Color::Yellow))}>{ "Play against AI as Green" }</button>
+                <button onclick={ctx.link().callback(|_| Msg::CreateAi(Color::Green))}>{ "Play against AI as Yellow" }</button>
             </div>
         };
 

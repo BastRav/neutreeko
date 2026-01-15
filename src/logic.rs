@@ -5,7 +5,16 @@ use strum::IntoEnumIterator;
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
 pub enum Color {
     Yellow,
-    Green
+    Green,
+}
+
+impl Color {
+    pub fn other_color(&self) -> Color {
+        match self {
+            Color::Green => Color::Yellow,
+            Color::Yellow => Color::Green,
+        }
+    }
 }
 
 #[derive(PartialEq, Eq, Hash, Clone)]
@@ -197,9 +206,8 @@ impl Board {
                 self.next_player = None;
                 return has_moved;
             }
-            self.next_player = match self.next_player {
-                Some(Color::Green) => Some(Color::Yellow),
-                Some(Color::Yellow) => Some(Color::Green),
+            self.next_player = match &self.next_player {
+                Some(color) => Some(color.other_color()),
                 None => None,
             };
         }
@@ -225,6 +233,20 @@ impl Board {
             let mut new_board = self.clone();
             if new_board.move_pawn_until_blocked(pawn_index, &direction) {
                 valid_directions.push((direction, new_board));
+            }
+        }
+        valid_directions
+    }
+
+    pub fn get_all_valid_directions_and_resulting_boards(&self) -> Vec<(usize, Direction, Board)> {
+        let mut valid_directions = Vec::with_capacity(24);
+        for (pawn_index, pawn) in self.pawns.iter().enumerate() {
+            if Some(pawn.color.clone()) != self.next_player {
+                continue;
+            }
+            let directions = self.get_valid_directions_and_resulting_boards(pawn_index);
+            for (direction, new_board) in directions {
+                valid_directions.push((pawn_index, direction, new_board))
             }
         }
         valid_directions
