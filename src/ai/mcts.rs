@@ -1,7 +1,7 @@
 use std::vec;
 
 use crate::logic::{Board, Color, Direction};
-use crate::ai::AI;
+use super::AI;
 
 use wasm_bindgen::prelude::*;
 use log::info;

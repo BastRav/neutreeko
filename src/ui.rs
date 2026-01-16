@@ -6,9 +6,7 @@ use web_sys::HtmlSelectElement;
 use gloo_timers::future::sleep;
 use std::time::Duration;
 
-use crate::minmax::MinMax;
-use crate::mcts::MCTS;
-use crate::ai::AI;
+use crate::ai::{AI, minmax::MinMax, mcts::MCTS};
 use crate::logic::{Board, Direction, Pawn, Position, Color};
 
 const SCALING: u32 = 80;

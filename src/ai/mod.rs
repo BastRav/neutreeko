@@ -1,3 +1,5 @@
+pub mod minmax;
+pub mod mcts;
 use crate::logic::{Direction, Board, Color};
 
 pub trait AI: Clone {
