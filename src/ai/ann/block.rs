@@ -135,7 +135,7 @@ impl<B: Backend> PolicyHead<B> {
             .init(device);
         let bn1 = BatchNormConfig::new(channels).init(device);
         let relu = Relu::new();
-        let linear = LinearConfig::new(channels * 3 * 3, 48).init(device);
+        let linear = LinearConfig::new(channels * 3 * 3, 200).init(device);
         Self {
             conv1,
             bn1,
