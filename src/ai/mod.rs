@@ -1,6 +1,7 @@
 pub mod minmax;
 pub mod mcts;
 pub mod ann;
+pub mod alphazeutreeko;
 use crate::logic::{Direction, Board, Color};
 
 pub trait AI: Clone {

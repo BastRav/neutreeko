@@ -1,5 +1,5 @@
 mod block;
-mod inputouput;
+pub mod inputouput;
 
 use crate::logic::{Color, Board, Direction};
 use super::AI;
@@ -65,14 +65,14 @@ impl<B: Backend> ANN<B> {
 
     pub fn forward(&self, input: Tensor<B, 3>) -> (Tensor<B, 1>, Tensor<B, 1>) {
         let input_reshaped = input.reshape([1, 2, 5, 5]);
-        info!("ANN forward pass with input shape: {:?}", input_reshaped.shape());
+        //info!("ANN forward pass with input shape: {:?}", input_reshaped.shape());
         // First block
         let out = self.conv1.forward(input_reshaped);
-        info!("After conv1 shape: {:?}", out.shape());
+        //info!("After conv1 shape: {:?}", out.shape());
         let out = self.bn1.forward(out);
-        info!("After bn1 shape: {:?}", out.shape());
+        //info!("After bn1 shape: {:?}", out.shape());
         let out = self.relu.forward(out);
-        info!("After first block shape: {:?}", out.shape());
+        //info!("After first block shape: {:?}", out.shape());
 
         // Residual blocks
         let out = self.layer1.forward(out);
@@ -80,11 +80,19 @@ impl<B: Backend> ANN<B> {
         let out = self.layer3.forward(out);
         let out = self.layer4.forward(out);
         let out_copy = out.clone();
-        info!("After residual blocks shape: {:?}", out.shape());
+        //info!("After residual blocks shape: {:?}", out.shape());
 
         let value = self.value_head.forward(out);
         let policy = self.policy_head.forward(out_copy);
         (value, policy)
+    }
+    pub fn predict(&self, board:&Board) -> (f32, Vec<(f32, usize, Direction, Board)>) {
+        let device = self.conv1.weight.device();
+        let input = board_to_input(board, &device);
+        let ann_output = self.forward(input);
+        let board_eval: f32 = ann_output.0.to_data().into_vec().unwrap()[0];
+        let moves_eval = output_to_moves(board, ann_output.1);
+        (board_eval, moves_eval)
     }
 }
 
@@ -92,16 +100,14 @@ impl<B: Backend> ANN<B> {
 pub struct ANNSolo<B: Backend> {
     color: Color,
     ann: ANN<B>,
-    device: Device<B>,
 }
 
 impl<B: Backend> AI for ANNSolo<B> {
     fn new(color: Color, _difficulty: usize) -> Self {
-        let device = Default::default();
+        let device = B::Device::default();
         Self {
             color,
             ann: ANN::init(32, &device),
-            device,
         }
     }
     fn color(&self) -> &Color {
@@ -109,12 +115,9 @@ impl<B: Backend> AI for ANNSolo<B> {
     }
 
     fn best_move(&mut self, board:&Board) -> (usize, Direction) {
-        let input = board_to_input(board, &self.device);
-        let ann_output = self.ann.forward(input);
-        let board_eval: f32 = ann_output.0.to_data().into_vec().unwrap()[0];
+        let (board_eval, moves_eval) = self.ann.predict(board);
         info!("ANN board evaluation for color {:?}: {}", self.color(), board_eval);
-        let mut output = output_to_moves(board, ann_output.1);
-        output.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+        let mut output = moves_eval;
         let output_print: Vec<(f32, usize, Direction)> = output.clone().into_iter().map(|x| (x.0, x.1, x.2)).collect();
         info!("ANN possible moves with probabilities: {:?}", output_print);
         let best_move = output.pop().unwrap();

@@ -26,6 +26,7 @@ where B: Backend {
     }
     let total: f32 = possible_moves_proba.iter().map(|x| x.0).sum();
     possible_moves_proba.iter_mut().for_each(|x| x.0 /= total);
+    possible_moves_proba.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
 
     possible_moves_proba
 }

@@ -7,7 +7,7 @@ use gloo_timers::future::sleep;
 use std::time::Duration;
 use burn::backend::ndarray::NdArray;
 
-use crate::ai::{AI, minmax::MinMax, mcts::MCTS, ann::ANNSolo};
+use crate::ai::{AI, minmax::MinMax, mcts::MCTS, ann::ANNSolo, alphazeutreeko::AlphaZeutreeko};
 use crate::logic::{Board, Direction, Pawn, Position, Color};
 
 const SCALING: u32 = 80;
@@ -29,6 +29,7 @@ pub enum AiType {
     MinMax(Color),
     MCTS(Color),
     ANNSolo(Color),
+    AlphaZeutreeko(Color),
 }
 
 pub struct App {
@@ -52,6 +53,9 @@ impl App {
         }
         else if self.ai_type_selected == 3 {
             self.ai = AiType::ANNSolo(color);
+        }
+        else if self.ai_type_selected == 4 {
+            self.ai = AiType::AlphaZeutreeko(color);
         }
         else {
             panic!("AI Type not implemented!")
@@ -170,6 +174,24 @@ impl Component for App {
                             link.send_message(Msg::AiMoveReady(ai_move));
                         });
                     }
+                    AiType::AlphaZeutreeko(color) => {
+                        if Some(color.clone()) != self.board.next_player {
+                            return true;
+                        }
+                        // Set AI thinking state
+                        self.ai_thinking = true;
+                        
+                        // Spawn async task to calculate AI move
+                        let board = self.board.clone();
+                        let link = ctx.link().clone();
+                        let mut ai: AlphaZeutreeko<NdArray<f32, i32>> = AlphaZeutreeko::new(color.clone(), self.difficulty_selected);
+                        wasm_bindgen_futures::spawn_local(async move {
+                            // Small delay to allow browser to render player's move first
+                            sleep(Duration::from_millis(50)).await;
+                            let ai_move = ai.ai_play(&board);
+                            link.send_message(Msg::AiMoveReady(ai_move));
+                        });
+                    }
                 }
             }
             Msg::AiMoveReady(ai_move) => {
@@ -226,6 +248,7 @@ impl Component for App {
                     <option value="1" selected={self.ai_type_selected == 1}>{ "MinMax" }</option>
                     <option value="2" selected={self.ai_type_selected == 2}>{ "MCTS" }</option>
                     <option value="3" selected={self.ai_type_selected == 3}>{ "ANN" }</option>
+                    <option value="4" selected={self.ai_type_selected == 4}>{ "AlphaZeutreeko" }</option>
                     </select>
                 </div>
                 <div class="difficulty-selector">
