@@ -63,14 +63,6 @@ pub struct MCTS {
 }
 
 impl MCTS {
-    pub fn new(color: Color, difficulty: usize) -> Self {
-        Self {
-            color,
-            time_allowed_ms: (difficulty.pow(3)) as f64 * 0.05 * 1000.0,
-            graph: Graph::<MCTSNode, (usize, Direction)>::new(),
-        }
-    }
-
     pub fn expand(&mut self, node_index: NodeIndex) -> NodeIndex{
         let node = self.graph.node_weight_mut(node_index).unwrap();
         let action = node.untried_actions.pop().unwrap();
@@ -128,6 +120,14 @@ impl MCTS {
 }
 
 impl AI for MCTS {
+    fn new(color: Color, difficulty: usize) -> Self {
+        Self {
+            color,
+            time_allowed_ms: (difficulty.pow(3)) as f64 * 0.05 * 1000.0,
+            graph: Graph::<MCTSNode, (usize, Direction)>::new(),
+        }
+    }
+
     fn color(&self) -> &Color {
         &self.color
     }

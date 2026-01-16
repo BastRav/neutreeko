@@ -50,14 +50,6 @@ pub struct MinMax {
 }
 
 impl MinMax{
-    pub fn new(color: Color, depth: usize) -> Self {
-        Self {
-            color,
-            depth,
-            graph: Graph::<BoardEvaluation, (usize, Direction)>::new(),
-        }
-    }
-
     fn minmax_score(&self, node_index: NodeIndex, depth_remaining: usize, mut alpha: isize, mut beta: isize, maximizing_player: bool) -> isize {
         if depth_remaining == 0 {
             return self.graph.node_weight(node_index).unwrap().score;
@@ -90,6 +82,14 @@ impl MinMax{
 }
 
 impl AI for MinMax {
+    fn new(color: Color, depth: usize) -> Self {
+        Self {
+            color,
+            depth,
+            graph: Graph::<BoardEvaluation, (usize, Direction)>::new(),
+        }
+    }
+
     fn color(&self) -> &Color {
         &self.color
     }

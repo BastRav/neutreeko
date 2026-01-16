@@ -5,8 +5,9 @@ use yew::{html, Component, Context, Html};
 use web_sys::HtmlSelectElement;
 use gloo_timers::future::sleep;
 use std::time::Duration;
+use burn::backend::ndarray::NdArray;
 
-use crate::ai::{AI, minmax::MinMax, mcts::MCTS};
+use crate::ai::{AI, minmax::MinMax, mcts::MCTS, ann::ANNSolo};
 use crate::logic::{Board, Direction, Pawn, Position, Color};
 
 const SCALING: u32 = 80;
@@ -25,8 +26,9 @@ pub enum Msg {
 
 pub enum AiType {
     None,
-    MinMax(MinMax),
-    MCTS(MCTS),
+    MinMax(Color),
+    MCTS(Color),
+    ANNSolo(Color),
 }
 
 pub struct App {
@@ -44,9 +46,12 @@ impl App {
         if self.ai_type_selected == 0 {
             ()
         } else if self.ai_type_selected == 1 {
-            self.ai = AiType::MinMax(MinMax::new(color, self.difficulty_selected));
+            self.ai = AiType::MinMax(color);
         } else if self.ai_type_selected == 2 {
-            self.ai = AiType::MCTS(MCTS::new(color, self.difficulty_selected));
+            self.ai = AiType::MCTS(color);
+        }
+        else if self.ai_type_selected == 3 {
+            self.ai = AiType::ANNSolo(color);
         }
         else {
             panic!("AI Type not implemented!")
@@ -110,30 +115,54 @@ impl Component for App {
             }
             Msg::AiShouldPlay => {
                 match &self.ai {
-                    AiType::None => (),
-                    AiType::MinMax(ai) => {
+                    AiType::None => (),                    
+                    AiType::MinMax(color) => {
+                        if Some(color.clone()) != self.board.next_player {
+                            return true;
+                        }
                         // Set AI thinking state
                         self.ai_thinking = true;
                         
                         // Spawn async task to calculate AI move
                         let board = self.board.clone();
                         let link = ctx.link().clone();
-                        let mut ai = ai.clone();
+                        let mut ai = MinMax::new(color.clone(), self.difficulty_selected);
                         wasm_bindgen_futures::spawn_local(async move {
                             // Small delay to allow browser to render player's move first
                             sleep(Duration::from_millis(50)).await;
                             let ai_move = ai.ai_play(&board);
                             link.send_message(Msg::AiMoveReady(ai_move));
-                    });
+                        });
                     }
-                    AiType::MCTS(ai) => {
+                    AiType::MCTS(color) => {
+                        if Some(color.clone()) != self.board.next_player {
+                            return true;
+                        }
                         // Set AI thinking state
                         self.ai_thinking = true;
                         
                         // Spawn async task to calculate AI move
                         let board = self.board.clone();
                         let link = ctx.link().clone();
-                        let mut ai = ai.clone();
+                        let mut ai = MCTS::new(color.clone(), self.difficulty_selected);
+                        wasm_bindgen_futures::spawn_local(async move {
+                            // Small delay to allow browser to render player's move first
+                            sleep(Duration::from_millis(50)).await;
+                            let ai_move = ai.ai_play(&board);
+                            link.send_message(Msg::AiMoveReady(ai_move));
+                        });
+                    }
+                    AiType::ANNSolo(color) => {
+                        if Some(color.clone()) != self.board.next_player {
+                            return true;
+                        }
+                        // Set AI thinking state
+                        self.ai_thinking = true;
+                        
+                        // Spawn async task to calculate AI move
+                        let board = self.board.clone();
+                        let link = ctx.link().clone();
+                        let mut ai: ANNSolo<NdArray<f32, i32>> = ANNSolo::new(color.clone(), self.difficulty_selected);
                         wasm_bindgen_futures::spawn_local(async move {
                             // Small delay to allow browser to render player's move first
                             sleep(Duration::from_millis(50)).await;
@@ -196,6 +225,7 @@ impl Component for App {
                     <option value="0" selected={self.ai_type_selected == 0}>{ "None" }</option>
                     <option value="1" selected={self.ai_type_selected == 1}>{ "MinMax" }</option>
                     <option value="2" selected={self.ai_type_selected == 2}>{ "MCTS" }</option>
+                    <option value="3" selected={self.ai_type_selected == 3}>{ "ANN" }</option>
                     </select>
                 </div>
                 <div class="difficulty-selector">
