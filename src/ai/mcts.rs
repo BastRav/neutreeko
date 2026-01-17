@@ -180,6 +180,32 @@ impl<P: Policy> MCTSGeneric<P> {
         info!("==Best move found: {:?} with score {}==", best_move_found, best_score);
         (best_move_found.1, best_move_found.2)
     }
+
+    pub fn choose_final_move_give_all_options(&self, origin: NodeIndex) -> Vec<(f32, usize, Direction)> {
+        let mut moves_found = vec![];
+        let mut total_visits = 0.0;
+        for edge in self.graph.edges(origin) {
+            let target_node_index = edge.target();
+            let visits = self.graph.node_weight(target_node_index).unwrap().visits as f32;
+            let move_with_policy = edge.weight().clone();
+            moves_found.push((visits, move_with_policy.1, move_with_policy.2));
+            total_visits += visits;
+        }
+        moves_found.iter_mut().for_each(|x| x.0 /= total_visits);
+        moves_found
+    }
+
+    pub fn give_all_options(&mut self, board:&Board) -> Vec<(f32, usize, Direction)> {
+        self.graph.clear();
+        let first_prediction = self.policy.predict(board);
+        let origin = self.graph.add_node(MCTSNode::new(board.clone(), self.color.other_color(), first_prediction.1, first_prediction.0));
+
+        let start_time = now();
+        while now() - start_time < self.time_allowed_ms {
+            self.iterate(origin);
+        }
+        self.choose_final_move_give_all_options(origin)
+    }
 }
 
 #[derive(Clone)]

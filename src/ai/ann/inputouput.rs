@@ -1,8 +1,8 @@
 use core::f32;
 
-use crate::logic::{Board, Direction};
+use crate::{ai::ann::train::PolicyValueTarget, logic::{Board, Direction}};
 
-use burn::tensor::{backend::Backend, Device, Tensor};
+use burn::tensor::{backend::{Backend, AutodiffBackend}, Device, Tensor};
 
 pub fn board_to_input<B>(board: &Board, device: &Device<B>) -> Tensor<B, 3>
 where B: Backend {
@@ -62,4 +62,18 @@ where B:Backend {
         illegal_mask_array[mask_index] = 0.0;
     }
     Tensor::from_data(illegal_mask_array, device)
+}
+
+pub fn moves_and_value_to_target<B>(element:&(Board, Vec<(f32, usize, Direction)>), board_eval: f32, device: &Device<B>) -> PolicyValueTarget<B>
+where B: AutodiffBackend {
+    let value = Tensor::from_floats([board_eval], device);
+    let mut policy_floats = [0.0; 200];
+    let board = &element.0;
+    for possible_move in element.1.iter() {
+        let position = board.pawns[possible_move.1].position.clone();
+        let index_to_consider = position_direction_to_index((position.row, position.column), possible_move.2.clone());
+        policy_floats[index_to_consider] = possible_move.0
+    }
+    let policy = Tensor::from_floats( policy_floats, device);
+    PolicyValueTarget { value, policy }
 }

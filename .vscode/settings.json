@@ -1,3 +1,5 @@
 {
     "rust-analyzer.cargo.features": ["train"],
+    "rust-analyzer.checkOnSave": true,
+    "rust-analyzer.diagnostics.enable": false,
 }

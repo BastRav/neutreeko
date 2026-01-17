@@ -1,6 +1,6 @@
 use super::{
     ANN, PolicyValueOutput,
-    inputouput::{board_to_input, output_to_moves, illegal_mask},
+    inputouput::{board_to_input, moves_and_value_to_target, illegal_mask},
 };
 use burn::{
     nn::loss::{MseLoss, Reduction},
@@ -62,13 +62,21 @@ impl<B: AutodiffBackend<FloatElem = f32>> ANNTrainer<B> {
     pub fn training_loop(&mut self, max_epoch: i32) {
         for epoch in 1..=max_epoch {
             info!("Starting iteration {}", epoch);
+            let mut to_feed = vec![];
             let mut board = Board::default_new();
             while board.winner().is_none(){
-                
-
+                let possible_moves = self.alphazeutreeko.mcts.give_all_options(&board);
+                to_feed.push((board.clone(), possible_moves.clone()));
+                let best_move = possible_moves.iter().max_by(|a, b| b.0.partial_cmp(&a.0).unwrap()).unwrap();
+                board.move_pawn_until_blocked(best_move.1, &best_move.2);
+            }
+            let mut board_eval = 1.0;
+            for element in to_feed.iter(){
                 let input = board_to_input(&board, &self.device);
+                let target = moves_and_value_to_target(element, board_eval, &self.device);
                 let illegal_mask = illegal_mask(&board, &self.device);
                 self.train_step(input, target, illegal_mask);
+                board_eval = 1.0 - board_eval;
             }
         }
     }
