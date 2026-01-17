@@ -10,6 +10,7 @@ use burn::{
     tensor::Tensor,
 };
 
+#[cfg(feature = "train")]
 fn main() {
     let mut trainer: ANNTrainer<Autodiff<NdArray<f32>>> = ANNTrainer::new();
 

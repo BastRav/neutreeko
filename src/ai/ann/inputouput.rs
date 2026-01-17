@@ -1,3 +1,5 @@
+use core::f32;
+
 use crate::logic::{Board, Direction};
 
 use burn::tensor::{backend::Backend, Device, Tensor};
@@ -26,14 +28,21 @@ where B: Backend {
     let tensor_data = tensor.to_data().into_vec().unwrap();
 
     let mut possible_moves_proba = vec![];
+    let mut min_proba = f32::MIN;
     for possible_move in possible_moves.iter() {
         let pawn_position = board.pawns[possible_move.0].position.clone();
         let output_index = position_direction_to_index((pawn_position.row, pawn_position.column),possible_move.1.clone());
         let proba: f32 = tensor_data[output_index];
+        if proba < min_proba {
+            min_proba = proba;
+        }
         possible_moves_proba.push((proba, possible_move.0, possible_move.1.clone(), possible_move.2.clone()));
     }
 
     // Normalize probabilities
+    if min_proba < 0.0 { 
+        possible_moves_proba.iter_mut().for_each(|x| x.0 += min_proba);
+    }
     let total: f32 = possible_moves_proba.iter().map(|x| x.0).sum();
     possible_moves_proba.iter_mut().for_each(|x| x.0 /= total);
 
