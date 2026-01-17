@@ -20,7 +20,7 @@ fn position_direction_to_index(position: (u8, u8), direction: Direction) -> usiz
     (row as usize * 5 + col as usize) * 8 + direction as usize
 }
 
-pub fn output_to_moves<B>(board: &Board, tensor: Tensor<B, 1>) -> Vec<(f32, usize, Direction, Board)>
+pub fn output_to_moves<B>(board: &Board, tensor: Tensor<B, 2>) -> Vec<(f32, usize, Direction, Board)>
 where B: Backend {
     let possible_moves = board.get_all_valid_directions_and_resulting_boards();
     let tensor_data = tensor.to_data().into_vec().unwrap();
@@ -41,4 +41,16 @@ where B: Backend {
     possible_moves_proba.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
 
     possible_moves_proba
+}
+
+pub fn illegal_mask<B>(board: &Board, device: &Device<B>) -> Tensor<B, 2>
+where B:Backend {
+    let possible_moves = board.get_all_valid_directions_and_resulting_boards();
+    let mut illegal_mask_array = [-1e9; 200];
+    for possible_move in possible_moves.iter() {
+        let pawn_position = board.pawns[possible_move.0].position.clone();
+        let mask_index = position_direction_to_index((pawn_position.row, pawn_position.column),possible_move.1.clone());
+        illegal_mask_array[mask_index] = 0.0;
+    }
+    Tensor::from_data(illegal_mask_array, device)
 }

@@ -4,7 +4,7 @@ use burn::{
         BatchNorm, BatchNormConfig, PaddingConfig2d, Relu, Tanh, Linear, LinearConfig,
         conv::{Conv2d, Conv2dConfig},
     },
-    tensor::{Device, Tensor, backend::Backend, activation::{softmax, sigmoid}},
+    tensor::{Device, Tensor, backend::Backend, activation::{sigmoid}},
 };
 //use log::info;
 
@@ -144,7 +144,7 @@ impl<B: Backend> PolicyHead<B> {
         }
     }
 
-    pub fn forward(&self, input: Tensor<B, 4>) -> Tensor<B, 1> {
+    pub fn forward(&self, input: Tensor<B, 4>) -> Tensor<B, 2> {
         //info!("Policy head forward pass with input shape: {:?}", input.shape());
         let out = self.conv1.forward(input);
         //info!("After conv1 shape: {:?}", out.shape());
@@ -152,11 +152,9 @@ impl<B: Backend> PolicyHead<B> {
         //info!("After bn1 shape: {:?}", out.shape());
         let out = self.relu.forward(out);
         //info!("After relu shape: {:?}", out.shape());
-        let out = out.flatten(0, 3);
+        let out = out.flatten(1, 3);
         //info!("After flatten shape: {:?}", out.shape());
         let out = self.linear.forward(out);
-        //info!("After linear shape: {:?}", out.shape());
-        let out = softmax(out, 0);
         //info!("Policy head output shape: {:?}", out.shape());
         out
     }

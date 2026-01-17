@@ -1,12 +1,13 @@
 mod block;
 pub mod inputouput;
+pub mod train;
 
 use crate::logic::{Color, Board, Direction};
 use super::AI;
-use log::info;
 
 use inputouput::{board_to_input, output_to_moves};
 
+use log::info;
 use burn::{
     module::Module,
     nn::{
@@ -18,6 +19,11 @@ use burn::{
 };
 
 use block::{ResidualBlock, ValueHead, PolicyHead};
+
+pub struct PolicyValueOutput<B: Backend> {
+    pub value: Tensor<B, 1>,
+    pub policy: Tensor<B, 2>,
+}
 
 #[derive(Module, Debug)]
 pub struct ANN<B: Backend> {
@@ -31,7 +37,7 @@ pub struct ANN<B: Backend> {
 }
 
 impl<B: Backend> ANN<B> {
-    pub fn forward(&self, input: Tensor<B, 3>) -> (Tensor<B, 1>, Tensor<B, 1>) {
+    pub fn forward(&self, input: Tensor<B, 3>) -> PolicyValueOutput<B> {
         let input_reshaped = input.reshape([1, 2, 5, 5]);
         //info!("ANN forward pass with input shape: {:?}", input_reshaped.shape());
         // First block
@@ -50,14 +56,15 @@ impl<B: Backend> ANN<B> {
 
         let value = self.value_head.forward(out);
         let policy = self.policy_head.forward(out_copy);
-        (value, policy)
+        PolicyValueOutput { value, policy }
     }
+
     pub fn predict(&self, board:&Board) -> (f32, Vec<(f32, usize, Direction, Board)>) {
         let device = self.conv1.weight.device();
         let input = board_to_input(board, &device);
         let ann_output = self.forward(input);
-        let board_eval: f32 = ann_output.0.to_data().into_vec().unwrap()[0];
-        let moves_eval = output_to_moves(board, ann_output.1);
+        let board_eval: f32 = ann_output.value.to_data().into_vec().unwrap()[0];
+        let moves_eval = output_to_moves(board, ann_output.policy);
         (board_eval, moves_eval)
     }
 }
