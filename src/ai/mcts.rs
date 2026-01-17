@@ -31,18 +31,19 @@ pub struct MCTSNode {
     pub color: Color,
     pub visits: usize,
     pub wins: f32,
-    pub untried_actions: Vec<(usize, Direction, Board)>,
+    pub untried_actions: Vec<(f32, usize, Direction, Board)>,
+    pub board_eval: f32,
 }
 
 impl MCTSNode {
-    pub fn new(board: Board, color: Color) -> Self {
-        let untried_actions = board.get_all_valid_directions_and_resulting_boards();
+    pub fn new(board: Board, color: Color, untried_actions: Vec<(f32, usize, Direction, Board)>, board_eval: f32) -> Self {
         Self {
             board,
             color,
             visits: 0,
             wins: 0.0,
             untried_actions,
+            board_eval,
         }
     }
 
@@ -56,7 +57,10 @@ impl MCTSNode {
 }
 
 pub trait Policy: Clone {
-    fn predict(&self, board:&Board) -> (f32, Vec<(f32, usize, Direction, Board)>);
+    const IS_TRIVIAL: bool;
+    fn predict(&self, board:&Board) -> (f32, Vec<(f32, usize, Direction, Board)>) {
+        (0.0, board.get_all_valid_directions_and_resulting_boards().into_iter().map(|(p, dir, b)| (0.0, p, dir, b)).collect())
+    }
     fn new() -> Self;
 }
 
@@ -64,7 +68,7 @@ pub trait Policy: Clone {
 pub struct MCTSGeneric<P: Policy> {
     pub color: Color,
     pub time_allowed_ms: f64,
-    pub graph: Graph<MCTSNode, (usize, Direction)>,
+    pub graph: Graph<MCTSNode, (f32, usize, Direction)>,
     pub policy: P,
 }
 
@@ -81,50 +85,51 @@ impl<P: Policy> MCTSGeneric<P> {
         }
 
         let winner = self.rollout(node_index);
-        self.backpropagate(node_index, &winner);
+        self.backpropagate(node_index, winner);
     }
+
     pub fn expand(&mut self, node_index: NodeIndex) -> NodeIndex{
         let node = self.graph.node_weight_mut(node_index).unwrap();
-
-        let (_, policy_moves) = self.policy.predict(&node.board);
-        if !policy_moves.is_empty() {
-            panic!("MCTS expansion with policy moves not yet implemented");
-        }
         let action = node.untried_actions.pop().unwrap();
         let child_color = node.color.other_color();
-        let child = self.graph.add_node(MCTSNode::new(action.2, child_color));
-        self.graph.add_edge(node_index, child, (action.0, action.1));
+        let prediction = self.policy.predict(&action.3);
+        let child = self.graph.add_node(MCTSNode::new(action.3, child_color, prediction.1, prediction.0));
+        self.graph.add_edge(node_index, child, (action.0, action.1, action.2));
         child
     }
 
-    pub fn rollout(&self, node_index: NodeIndex) -> Color {
-        let node = self.graph.node_weight(node_index).unwrap();
-        let (_, policy_moves) = self.policy.predict(&node.board);
-        if !policy_moves.is_empty() {
-            panic!("MCTS expansion with policy moves not yet implemented");
-        }
-        let mut current_board = self.graph.node_weight(node_index).unwrap().board.clone();
+    pub fn random_rollout(&self, node: &MCTSNode) -> f32 {
+        let mut current_board = node.board.clone();
+        let player_color = node.color.clone();
         while current_board.next_player.is_some() {
             let all_possible_moves = current_board.get_all_valid_directions_and_resulting_boards();
             let random_move_index = (get_random_f32() * all_possible_moves.len() as f32).floor() as usize;
             current_board = all_possible_moves[random_move_index].2.clone();
         }
-        current_board.winner().unwrap()
+        if current_board.winner().unwrap() == player_color {
+            return 1.0;
+        } else {
+            return 0.0;
+        }
     }
 
-    pub fn backpropagate(&mut self, node_index:NodeIndex, winner:&Color) {
+    pub fn rollout(&self, node_index: NodeIndex) -> f32 {
         let node = self.graph.node_weight(node_index).unwrap();
-        let (_, policy_moves) = self.policy.predict(&node.board);
-        if !policy_moves.is_empty() {
-            panic!("MCTS expansion with policy moves not yet implemented");
+        if P::IS_TRIVIAL {
+            return self.random_rollout(node);
+        } else {
+            return node.board_eval;
         }
+    }
+
+    pub fn backpropagate(&mut self, node_index:NodeIndex, winner:f32) {
         let mut current_node_index = node_index;
+        let mut to_add = winner;
         loop {
             let current_node = self.graph.node_weight_mut(current_node_index).unwrap();
             current_node.visits += 1;
-            if current_node.color == *winner {
-                current_node.wins += 1.0;
-            }
+            current_node.wins += to_add;
+            to_add = 1.0 - to_add;
             match self.graph.edges_directed(current_node_index, petgraph::Direction::Incoming).next() {
                 None => break,
                 Some(edge) => current_node_index = edge.source(),
@@ -133,11 +138,6 @@ impl<P: Policy> MCTSGeneric<P> {
     }
 
     pub fn best_child(&mut self, node_index: NodeIndex) -> NodeIndex {
-        let node = self.graph.node_weight(node_index).unwrap();
-        let (_, policy_moves) = self.policy.predict(&node.board);
-        if !policy_moves.is_empty() {
-            panic!("MCTS expansion with policy moves not yet implemented");
-        }
         let mut best_score = 0.0;
         let mut best_child = self.graph.edges_directed(node_index, petgraph::Direction::Outgoing).next().unwrap().target();
         let parent_visits = self.graph.node_weight(node_index).unwrap().visits as f32;
@@ -147,8 +147,12 @@ impl<P: Policy> MCTSGeneric<P> {
             if child.visits == 0 {
                 return child_index;
             }
+            let mut prior = edge.weight().0;
+            if P::IS_TRIVIAL {
+                prior = 1.0;
+            }
             let exploit = child.wins / child.visits as f32;
-            let explore = 1.414 * (parent_visits.ln() / child.visits as f32).sqrt();
+            let explore = prior * 1.414 * (parent_visits.ln() / child.visits as f32).sqrt();
             let score = exploit + explore;
             if score > best_score {
                 best_child = child_index;
@@ -174,7 +178,7 @@ impl<P: Policy> MCTSGeneric<P> {
         }
         let best_move_found = best_moves_found[(get_random_f32() * best_moves_found.len() as f32).floor() as usize].clone();
         info!("==Best move found: {:?} with score {}==", best_move_found, best_score);
-        best_move_found
+        (best_move_found.1, best_move_found.2)
     }
 }
 
@@ -182,20 +186,19 @@ impl<P: Policy> MCTSGeneric<P> {
 pub struct TrivialPolicy;
 
 impl Policy for TrivialPolicy {
+    const IS_TRIVIAL:bool = true;
     fn new() -> Self {
         Self {}
-    }
-    fn predict(&self, _board:&Board) -> (f32, Vec<(f32, usize, Direction, Board)>) {
-        (0.0, vec![])
     }
 }
 
 impl<P: Policy> AI for MCTSGeneric<P> {
     fn new(color: Color, difficulty: usize) -> Self {
+        info!("Creating MCTS AI with trivial policy? {}", P::IS_TRIVIAL);
         Self {
             color,
             time_allowed_ms: (difficulty.pow(3)) as f64 * 0.05 * 1000.0,
-            graph: Graph::<MCTSNode, (usize, Direction)>::new(),
+            graph: Graph::<MCTSNode, (f32, usize, Direction)>::new(),
             policy: P::new(),
         }
     }
@@ -206,7 +209,8 @@ impl<P: Policy> AI for MCTSGeneric<P> {
 
     fn best_move(&mut self, board:&Board) -> (usize, Direction) {
         self.graph.clear();
-        let origin = self.graph.add_node(MCTSNode::new(board.clone(), self.color.other_color()));
+        let first_prediction = self.policy.predict(board);
+        let origin = self.graph.add_node(MCTSNode::new(board.clone(), self.color.other_color(), first_prediction.1, first_prediction.0));
 
         let start_time = now();
         let mut iterations = 0;

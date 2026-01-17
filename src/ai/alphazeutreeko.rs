@@ -10,6 +10,7 @@ pub struct ANNPolicy<B: Backend> {
 }
 
 impl<B: Backend> Policy for ANNPolicy<B> {
+    const IS_TRIVIAL:bool = false;
     fn new() -> Self {
         Self {
             ann: ANN::init(32, &B::Device::default()),
