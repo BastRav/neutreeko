@@ -25,8 +25,6 @@ pub struct ANN<B: Backend> {
     relu: Relu,
     layer1: ResidualBlock<B>,
     layer2: ResidualBlock<B>,
-    layer3: ResidualBlock<B>,
-    layer4: ResidualBlock<B>,
     value_head: ValueHead<B>,
     policy_head: PolicyHead<B>,
 }
@@ -44,8 +42,6 @@ impl<B: Backend> ANN<B> {
         // Residual blocks
         let layer1 = ResidualBlock::new(channels, device);
         let layer2 = ResidualBlock::new(channels, device);
-        let layer3 = ResidualBlock::new(channels, device);
-        let layer4 = ResidualBlock::new(channels, device);
 
         let value_head = ValueHead::new(channels, device);
         let policy_head = PolicyHead::new(channels, device);
@@ -56,8 +52,6 @@ impl<B: Backend> ANN<B> {
             relu,
             layer1,
             layer2,
-            layer3,
-            layer4,
             value_head,
             policy_head,
         }
@@ -77,8 +71,6 @@ impl<B: Backend> ANN<B> {
         // Residual blocks
         let out = self.layer1.forward(out);
         let out = self.layer2.forward(out);
-        let out = self.layer3.forward(out);
-        let out = self.layer4.forward(out);
         let out_copy = out.clone();
         //info!("After residual blocks shape: {:?}", out.shape());
 
