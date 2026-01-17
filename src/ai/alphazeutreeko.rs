@@ -27,6 +27,12 @@ pub struct AlphaZeutreeko <B: Backend, O: Platform> {
     pub mcts: MCTSGeneric<ANNPolicy<B>, O>,
 }
 
+impl<B: Backend, O: Platform> AlphaZeutreeko<B, O> {
+    pub fn set_color(&mut self, color:Color){
+        self.mcts.color = color;
+    }
+}
+
 impl<B: Backend, O: Platform> AI for AlphaZeutreeko<B, O> {
     fn color(&self) -> &Color {
         &self.mcts.color

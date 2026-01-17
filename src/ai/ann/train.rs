@@ -30,7 +30,7 @@ impl<B: AutodiffBackend<FloatElem = f32>> ANNTrainer<B> {
     pub fn new() -> Self {
         let device = B::Device::default();
         let optimizer = AdamConfig::new().init();
-        let alphazeutreeko = AlphaZeutreeko::new(Color::Green, 1);
+        let alphazeutreeko = AlphaZeutreeko::new(Color::Green, 3);
         let recorder = BinFileRecorder::<FullPrecisionSettings>::new();
 
         Self {
@@ -67,14 +67,25 @@ impl<B: AutodiffBackend<FloatElem = f32>> ANNTrainer<B> {
             println!("Starting iteration {}", epoch);
             let mut to_feed = vec![];
             let mut board = Board::default_new();
-            while board.winner().is_none(){
+            let mut number_moves = 0;
+            let mut board_eval = 1.0;
+            while board.winner().is_none() {
+                self.alphazeutreeko.set_color(board.next_player.clone().unwrap());
                 let possible_moves = self.alphazeutreeko.mcts.give_all_options(&board);
                 to_feed.push((board.clone(), possible_moves.clone()));
                 let best_move = possible_moves.iter().max_by(|a, b| b.0.partial_cmp(&a.0).unwrap()).unwrap();
-                board.move_pawn_until_blocked(best_move.1, &best_move.2);
+                let moved = board.move_pawn_until_blocked(best_move.1, &best_move.2);
+                if !moved {
+                    panic!["An invalid move was selected!!!"];
+                }
+                number_moves += 1;
+                if number_moves > 255 {
+                    println!("Game taking too long, consider it a draw");
+                    board_eval = 0.5;
+                    break;
+                }
             }
             println!("Game done, proceeding to learning");
-            let mut board_eval = 1.0;
             for element in to_feed.iter(){
                 let input = board_to_input(&board, &self.device);
                 let target = moves_and_value_to_target(element, board_eval, &self.device);
