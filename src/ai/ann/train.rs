@@ -3,9 +3,11 @@ use super::{
     inputouput::{board_to_input, moves_and_value_to_target, illegal_mask},
 };
 use burn::{
+    module::Module,
     nn::loss::{MseLoss, Reduction},
     optim::{Adam, AdamConfig, GradientsParams, Optimizer, adaptor::OptimizerAdaptor},
-    tensor::{Device, Tensor, activation::log_softmax, backend::AutodiffBackend},
+    record::{BinFileRecorder, FullPrecisionSettings},
+    tensor::{Device, Tensor, activation::log_softmax, backend::AutodiffBackend}
 };
 use crate::{
     ai::{AI, alphazeutreeko::AlphaZeutreeko, mcts::NativePlatform,},
@@ -21,6 +23,7 @@ pub struct ANNTrainer<B: AutodiffBackend> {
     pub alphazeutreeko: AlphaZeutreeko<B, NativePlatform>,
     pub optimizer: OptimizerAdaptor<Adam, ANN<B>, B>,
     pub device: Device<B>,
+    pub recorder: BinFileRecorder<FullPrecisionSettings>,
 }
 
 impl<B: AutodiffBackend<FloatElem = f32>> ANNTrainer<B> {
@@ -28,11 +31,13 @@ impl<B: AutodiffBackend<FloatElem = f32>> ANNTrainer<B> {
         let device = B::Device::default();
         let optimizer = AdamConfig::new().init();
         let alphazeutreeko = AlphaZeutreeko::new(Color::Green, 1);
+        let recorder = BinFileRecorder::<FullPrecisionSettings>::new();
 
         Self {
             alphazeutreeko,
             optimizer,
             device,
+            recorder
         }
     }
 
@@ -68,6 +73,7 @@ impl<B: AutodiffBackend<FloatElem = f32>> ANNTrainer<B> {
                 let best_move = possible_moves.iter().max_by(|a, b| b.0.partial_cmp(&a.0).unwrap()).unwrap();
                 board.move_pawn_until_blocked(best_move.1, &best_move.2);
             }
+            println!("Game done, proceeding to learning");
             let mut board_eval = 1.0;
             for element in to_feed.iter(){
                 let input = board_to_input(&board, &self.device);
@@ -77,5 +83,15 @@ impl<B: AutodiffBackend<FloatElem = f32>> ANNTrainer<B> {
                 board_eval = 1.0 - board_eval;
             }
         }
+    }
+    pub fn save(&self, filepath: &str) -> Result<(), Box<dyn std::error::Error>> {
+        self.alphazeutreeko.mcts.policy.ann.clone().save_file(filepath, &self.recorder)?;
+        Ok(())
+    }
+
+    pub fn load(&mut self, filepath: &str) -> Result<(), Box<dyn std::error::Error>> {
+        let loaded_ann = self.alphazeutreeko.mcts.policy.ann.clone().load_file(filepath, &self.recorder, &self.device)?;
+        self.alphazeutreeko.mcts.policy.ann = loaded_ann;
+        Ok(())
     }
 }
