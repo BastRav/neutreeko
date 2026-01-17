@@ -1,6 +1,6 @@
 use crate::ai::mcts::{MCTSGeneric, Policy};
 use crate::ai::AI;
-use crate::ai::ann::ANN;
+use crate::ai::ann::{ANN, ANNConfig};
 use burn::tensor::backend::Backend;
 use crate::logic::{Board, Color, Direction};
 
@@ -13,7 +13,7 @@ impl<B: Backend> Policy for ANNPolicy<B> {
     const IS_TRIVIAL:bool = false;
     fn new() -> Self {
         Self {
-            ann: ANN::init(32, &B::Device::default()),
+            ann: ANNConfig::init(32, &B::Device::default()),
         }
     }
 

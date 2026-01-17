@@ -14,6 +14,7 @@ use burn::{
         conv::{Conv2d, Conv2dConfig},
     },
     tensor::{Device, Tensor, backend::Backend},
+    config::Config,
 };
 
 use block::{ResidualBlock, ValueHead, PolicyHead};
@@ -30,33 +31,6 @@ pub struct ANN<B: Backend> {
 }
 
 impl<B: Backend> ANN<B> {
-    pub fn init(channels: usize, device: &Device<B>) -> Self {
-        let conv1 = Conv2dConfig::new([2, channels], [7, 7])
-            .with_stride([2, 2])
-            .with_padding(PaddingConfig2d::Explicit(3, 3))
-            .with_bias(false)
-            .init(device);
-        let bn1 = BatchNormConfig::new(channels).init(device);
-        let relu = Relu::new();
-
-        // Residual blocks
-        let layer1 = ResidualBlock::new(channels, device);
-        let layer2 = ResidualBlock::new(channels, device);
-
-        let value_head = ValueHead::new(channels, device);
-        let policy_head = PolicyHead::new(channels, device);
-
-        Self {
-            conv1,
-            bn1,
-            relu,
-            layer1,
-            layer2,
-            value_head,
-            policy_head,
-        }
-    }
-
     pub fn forward(&self, input: Tensor<B, 3>) -> (Tensor<B, 1>, Tensor<B, 1>) {
         let input_reshaped = input.reshape([1, 2, 5, 5]);
         //info!("ANN forward pass with input shape: {:?}", input_reshaped.shape());
@@ -88,6 +62,41 @@ impl<B: Backend> ANN<B> {
     }
 }
 
+#[derive(Config, Debug)]
+pub struct ANNConfig {
+    pub channels: usize,
+}
+
+impl ANNConfig {
+    pub fn init<B: Backend>(channels: usize, device: &Device<B>) -> ANN<B> {
+        let conv1 = Conv2dConfig::new([2, channels], [7, 7])
+            .with_stride([2, 2])
+            .with_padding(PaddingConfig2d::Explicit(3, 3))
+            .with_bias(false)
+            .init(device);
+        let bn1 = BatchNormConfig::new(channels).init(device);
+        let relu = Relu::new();
+
+        // Residual blocks
+        let layer1 = ResidualBlock::new(channels, device);
+        let layer2 = ResidualBlock::new(channels, device);
+
+        let value_head = ValueHead::new(channels, device);
+        let policy_head = PolicyHead::new(channels, device);
+
+        ANN {
+            conv1,
+            bn1,
+            relu,
+            layer1,
+            layer2,
+            value_head,
+            policy_head,
+        }
+    }
+}
+
+
 #[derive(Clone)]
 pub struct ANNSolo<B: Backend> {
     color: Color,
@@ -99,7 +108,7 @@ impl<B: Backend> AI for ANNSolo<B> {
         let device = B::Device::default();
         Self {
             color,
-            ann: ANN::init(32, &device),
+            ann: ANNConfig::init(32, &device),
         }
     }
     fn color(&self) -> &Color {
