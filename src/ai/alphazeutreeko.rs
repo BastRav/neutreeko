@@ -1,4 +1,4 @@
-use crate::ai::mcts::{MCTSGeneric, Policy};
+use crate::ai::mcts::{MCTSGeneric, Platform, Policy};
 use crate::ai::AI;
 use crate::ai::ann::{ANN, ANNConfig};
 use burn::tensor::backend::Backend;
@@ -23,11 +23,11 @@ impl<B: Backend> Policy for ANNPolicy<B> {
 }
 
 #[derive(Clone)]
-pub struct AlphaZeutreeko <B: Backend> {
-    pub mcts: MCTSGeneric<ANNPolicy<B>>,
+pub struct AlphaZeutreeko <B: Backend, O: Platform> {
+    pub mcts: MCTSGeneric<ANNPolicy<B>, O>,
 }
 
-impl<B: Backend> AI for AlphaZeutreeko<B> {
+impl<B: Backend, O: Platform> AI for AlphaZeutreeko<B, O> {
     fn color(&self) -> &Color {
         &self.mcts.color
     }

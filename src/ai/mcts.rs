@@ -1,4 +1,5 @@
 use std::vec;
+use std::marker::PhantomData;
 
 use crate::logic::{Board, Color, Direction};
 use super::AI;
@@ -9,20 +10,48 @@ use petgraph::Graph;
 use petgraph::visit::EdgeRef;
 use petgraph::prelude::NodeIndex;
 
-#[wasm_bindgen]
-extern "C" {
-    #[wasm_bindgen(js_namespace = performance)]
+pub trait Platform: Clone {
     fn now() -> f64;
+    fn random() -> f32;
 }
 
-#[wasm_bindgen]
-extern "C" {
-    #[wasm_bindgen(js_namespace = Math)]
-    fn random() -> f64;
+#[derive(Clone)]
+pub struct WasmPlatform;
+
+impl Platform for WasmPlatform {
+    fn now() -> f64 {
+        #[wasm_bindgen(js_namespace = performance)]
+        extern "C" {
+            fn now() -> f64;
+        }
+        now()
+    }
+
+    fn random() -> f32 {
+        #[wasm_bindgen(js_namespace = Math)]
+        extern "C" {
+            fn random() -> f64;
+        }
+        random() as f32
+    }
 }
 
-fn get_random_f32() -> f32 {
-    random() as f32
+#[derive(Clone)]
+pub struct NativePlatform;
+
+impl Platform for NativePlatform {
+    fn now() -> f64 {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs_f64() * 1000.0
+    }
+
+    fn random() -> f32 {
+        use rand::Rng;
+        rand::rng().random()
+    }
 }
 
 #[derive(Clone)]
@@ -65,14 +94,15 @@ pub trait Policy: Clone {
 }
 
 #[derive(Clone)]
-pub struct MCTSGeneric<P: Policy> {
+pub struct MCTSGeneric<P: Policy, O: Platform> {
     pub color: Color,
     pub time_allowed_ms: f64,
     pub graph: Graph<MCTSNode, (f32, usize, Direction)>,
     pub policy: P,
+    pub platform: PhantomData<O>,
 }
 
-impl<P: Policy> MCTSGeneric<P> {
+impl<P: Policy, O: Platform> MCTSGeneric<P, O> {
     pub fn iterate(&mut self, origin: NodeIndex) {
         let mut node_index = origin;
         let mut node = self.graph.node_weight(node_index).unwrap();
@@ -103,7 +133,7 @@ impl<P: Policy> MCTSGeneric<P> {
         let player_color = node.color.clone();
         while current_board.next_player.is_some() {
             let all_possible_moves = current_board.get_all_valid_directions_and_resulting_boards();
-            let random_move_index = (get_random_f32() * all_possible_moves.len() as f32).floor() as usize;
+            let random_move_index = (O::random() * all_possible_moves.len() as f32).floor() as usize;
             current_board = all_possible_moves[random_move_index].2.clone();
         }
         if current_board.winner().unwrap() == player_color {
@@ -176,7 +206,7 @@ impl<P: Policy> MCTSGeneric<P> {
                 best_moves_found.push(edge.weight().clone());
             }
         }
-        let best_move_found = best_moves_found[(get_random_f32() * best_moves_found.len() as f32).floor() as usize].clone();
+        let best_move_found = best_moves_found[(O::random() * best_moves_found.len() as f32).floor() as usize].clone();
         info!("==Best move found: {:?} with score {}==", best_move_found, best_score);
         (best_move_found.1, best_move_found.2)
     }
@@ -200,8 +230,8 @@ impl<P: Policy> MCTSGeneric<P> {
         let first_prediction = self.policy.predict(board);
         let origin = self.graph.add_node(MCTSNode::new(board.clone(), self.color.other_color(), first_prediction.1, first_prediction.0));
 
-        let start_time = now();
-        while now() - start_time < self.time_allowed_ms {
+        let start_time = O::now();
+        while O::now() - start_time < self.time_allowed_ms {
             self.iterate(origin);
         }
         self.choose_final_move_give_all_options(origin)
@@ -218,7 +248,7 @@ impl Policy for TrivialPolicy {
     }
 }
 
-impl<P: Policy> AI for MCTSGeneric<P> {
+impl<P: Policy, O: Platform> AI for MCTSGeneric<P, O> {
     fn new(color: Color, difficulty: usize) -> Self {
         info!("Creating MCTS AI with trivial policy? {}", P::IS_TRIVIAL);
         Self {
@@ -226,6 +256,7 @@ impl<P: Policy> AI for MCTSGeneric<P> {
             time_allowed_ms: (difficulty.pow(3)) as f64 * 0.05 * 1000.0,
             graph: Graph::<MCTSNode, (f32, usize, Direction)>::new(),
             policy: P::new(),
+            platform: PhantomData,
         }
     }
 
@@ -238,9 +269,9 @@ impl<P: Policy> AI for MCTSGeneric<P> {
         let first_prediction = self.policy.predict(board);
         let origin = self.graph.add_node(MCTSNode::new(board.clone(), self.color.other_color(), first_prediction.1, first_prediction.0));
 
-        let start_time = now();
+        let start_time = O::now();
         let mut iterations = 0;
-        while now() - start_time < self.time_allowed_ms {
+        while O::now() - start_time < self.time_allowed_ms {
             self.iterate(origin);
             iterations += 1;
         }
@@ -251,11 +282,11 @@ impl<P: Policy> AI for MCTSGeneric<P> {
 }
 
 #[derive(Clone)]
-pub struct MCTS {
-    pub mcts: MCTSGeneric<TrivialPolicy>,
+pub struct MCTS<O: Platform> {
+    pub mcts: MCTSGeneric<TrivialPolicy, O>,
 }
 
-impl AI for MCTS {
+impl<O: Platform> AI for MCTS<O> {
     fn new(color: Color, difficulty: usize) -> Self {
         Self {
             mcts: MCTSGeneric::new(color, difficulty),

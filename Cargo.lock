@@ -1999,6 +1999,7 @@ dependencies = [
  "gloo-timers",
  "log",
  "petgraph 0.8.3",
+ "rand",
  "strum",
  "strum_macros",
  "wasm-bindgen",

@@ -8,11 +8,9 @@ use burn::{
     tensor::{Device, Tensor, activation::log_softmax, backend::AutodiffBackend},
 };
 use crate::{
-    ai::{AI, alphazeutreeko::AlphaZeutreeko,},
+    ai::{AI, alphazeutreeko::AlphaZeutreeko, mcts::NativePlatform,},
     logic::{Board, Color},
 };
-
-use log::info;
 
 pub struct PolicyValueTarget<B: AutodiffBackend> {
     pub value: Tensor<B, 1>,
@@ -20,7 +18,7 @@ pub struct PolicyValueTarget<B: AutodiffBackend> {
 }
 
 pub struct ANNTrainer<B: AutodiffBackend> {
-    pub alphazeutreeko: AlphaZeutreeko<B>,
+    pub alphazeutreeko: AlphaZeutreeko<B, NativePlatform>,
     pub optimizer: OptimizerAdaptor<Adam, ANN<B>, B>,
     pub device: Device<B>,
 }
@@ -61,7 +59,7 @@ impl<B: AutodiffBackend<FloatElem = f32>> ANNTrainer<B> {
 
     pub fn training_loop(&mut self, max_epoch: i32) {
         for epoch in 1..=max_epoch {
-            info!("Starting iteration {}", epoch);
+            println!("Starting iteration {}", epoch);
             let mut to_feed = vec![];
             let mut board = Board::default_new();
             while board.winner().is_none(){

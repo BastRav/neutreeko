@@ -7,6 +7,7 @@ use gloo_timers::future::sleep;
 use std::time::Duration;
 use burn::backend::ndarray::NdArray;
 
+use crate::ai::mcts::WasmPlatform;
 use crate::ai::{AI, minmax::MinMax, mcts::MCTS, ann::ANNSolo, alphazeutreeko::AlphaZeutreeko};
 use crate::logic::{Board, Direction, Pawn, Position, Color};
 
@@ -148,7 +149,7 @@ impl Component for App {
                         // Spawn async task to calculate AI move
                         let board = self.board.clone();
                         let link = ctx.link().clone();
-                        let mut ai = MCTS::new(color.clone(), self.difficulty_selected);
+                        let mut ai: MCTS<WasmPlatform> = MCTS::new(color.clone(), self.difficulty_selected);
                         wasm_bindgen_futures::spawn_local(async move {
                             // Small delay to allow browser to render player's move first
                             sleep(Duration::from_millis(50)).await;
@@ -184,7 +185,7 @@ impl Component for App {
                         // Spawn async task to calculate AI move
                         let board = self.board.clone();
                         let link = ctx.link().clone();
-                        let mut ai: AlphaZeutreeko<NdArray<f32, i32>> = AlphaZeutreeko::new(color.clone(), self.difficulty_selected);
+                        let mut ai: AlphaZeutreeko<NdArray<f32, i32>, WasmPlatform> = AlphaZeutreeko::new(color.clone(), self.difficulty_selected);
                         wasm_bindgen_futures::spawn_local(async move {
                             // Small delay to allow browser to render player's move first
                             sleep(Duration::from_millis(50)).await;
