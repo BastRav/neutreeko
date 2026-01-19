@@ -67,6 +67,8 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
     }
 
     pub fn training_loop(&mut self, max_epoch: usize) {
+        let mut victories = 0.0;
+        let mut draws = 0.0;
         for epoch in 1..=max_epoch {
             println!("Starting iteration {}", epoch);
             let mut to_feed = vec![];
@@ -76,30 +78,38 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
             let alphazeutreeko_color = self.alphazeutreeko.color().clone();
             while board.winner().is_none() {
                 let possible_moves;
+                let best_move;
                 if board.next_player == Some(alphazeutreeko_color.clone()) {
+                    println!("AlphaZeutreeko is playing");
                     possible_moves = self.alphazeutreeko.give_all_options(&board);
+                    best_move = self.alphazeutreeko.best_move_from_vec(&possible_moves);
                 }
                 else {
+                    println!("Opponent is playing");
                     possible_moves = self.opponent.give_all_options(&board);
+                    best_move = self.opponent.best_move_from_vec(&possible_moves);
                 }
                 
                 to_feed.push((board.clone(), possible_moves.clone()));
-                let best_move = possible_moves.iter().max_by(|a, b| b.0.partial_cmp(&a.0).unwrap()).unwrap();
-                let moved = board.move_pawn_until_blocked(best_move.1, &best_move.2);
+                let moved = board.move_pawn_until_blocked(best_move.0, &best_move.1);
                 if !moved {
-                    panic!["An invalid move was selected!!!"];
+                    panic!("An invalid move was selected!!!");
                 }
                 number_moves += 1;
                 if number_moves > 255 {
                     println!("Game taking too long, consider it a draw");
                     board_eval = 0.5;
+                    draws += 1.0;
                     break;
                 }
             }
+            if board.winner() == Some(alphazeutreeko_color.clone()) {
+                victories += 1.0;
+            }
             println!("Game done, proceeding to learning");
-            for element in to_feed.iter(){
+            for element in to_feed.into_iter(){
                 let input = board_to_input(&board, &self.device);
-                let target = moves_and_value_to_target(element, board_eval, &self.device);
+                let target = moves_and_value_to_target(&element, board_eval, &self.device);
                 let illegal_mask = illegal_mask(&board, &self.device);
                 self.train_step(input, target, illegal_mask);
                 board_eval = 1.0 - board_eval;
@@ -107,6 +117,7 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
             self.alphazeutreeko.set_color(alphazeutreeko_color.other_color());
             self.opponent.set_color(alphazeutreeko_color);
         }
+        println!("Victories: {:.1}%, Draws: {:.1}%", 100.0*victories/max_epoch as f32, 100.0*draws/max_epoch as f32);
     }
 
     pub fn save(&self, filepath: &str) -> Result<(), Box<dyn std::error::Error>> {

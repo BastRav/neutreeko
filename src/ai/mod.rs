@@ -16,11 +16,10 @@ pub trait AI<O: Platform>: Clone {
         Some(self.best_move(board))
     }
 
-    fn best_move(&mut self, board:&Board) -> (usize, Direction) {
-        let all_options = self.give_all_options(board);
+    fn best_move_from_vec(&mut self, moves: &Vec<(f32, usize, Direction)>) -> (usize, Direction) {
         let mut best_moves_found = vec![];
         let mut best_score = 0.0;
-        for option in all_options {
+        for option in moves {
             O::print(&format!("Considering move {:?} with score {}", (option.1, option.2.clone()), option.0));
             if option.0 > best_score {
                 best_score = option.0;
@@ -32,6 +31,11 @@ pub trait AI<O: Platform>: Clone {
         let best_move_found = best_moves_found[(O::random() * best_moves_found.len() as f32).floor() as usize].clone();
         O::print(&format!("==Best move found: {:?} with score {}==", best_move_found, best_score));
         (best_move_found.0, best_move_found.1)
+    }
+
+    fn best_move(&mut self, board:&Board) -> (usize, Direction) {
+        let all_options = self.give_all_options(board);
+        self.best_move_from_vec(&all_options)
     }
 
     fn give_all_options(&mut self, board:&Board) -> Vec<(f32, usize, Direction)>;
