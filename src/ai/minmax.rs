@@ -15,7 +15,7 @@ use petgraph::prelude::NodeIndex;
 pub struct BoardEvaluation {
     pub board: Board,
     pub color: Color,
-    pub score: isize,
+    pub score: usize,
     pub depth: usize,
 }
 
@@ -28,9 +28,9 @@ impl BoardEvaluation {
 
     fn score_board(&mut self) {
         match self.board.winner() {
-            Some(winner_color) if winner_color == self.color => self.score = 100 - self.depth as isize,
-            Some(_) => self.score = -100 + self.depth as isize,
-            None => self.score = 0,
+            Some(winner_color) if winner_color == self.color => self.score = 2000 - self.depth,
+            Some(_) => self.score = self.depth + 1,
+            None => self.score = 100,
         }
     }
 }
@@ -44,12 +44,12 @@ pub struct MinMax<O: Platform> {
 }
 
 impl <O: Platform> MinMax<O> {
-    fn minmax_score(&self, node_index: NodeIndex, depth_remaining: usize, mut alpha: isize, mut beta: isize, maximizing_player: bool) -> isize {
+    fn minmax_score(&self, node_index: NodeIndex, depth_remaining: usize, mut alpha: usize, mut beta: usize, maximizing_player: bool) -> usize {
         if depth_remaining == 0 {
             return self.graph.node_weight(node_index).unwrap().score;
         }
 
-        let mut value = if maximizing_player { isize::MIN } else { isize::MAX };
+        let mut value = if maximizing_player { 0 } else { usize::MAX };
         let mut at_least_one_edge = false;
         for edge in self.graph.edges(node_index) {
             at_least_one_edge = true;
@@ -127,7 +127,7 @@ impl <O: Platform> AI<O> for MinMax<O> {
         let mut all_moves_found = vec![];
         for edge in self.graph.edges(origin) {
             let target_node_index = edge.target();
-            let minmax = self.minmax_score(target_node_index, self.depth - 1, isize::MIN, isize::MAX, false) as f32;
+            let minmax = self.minmax_score(target_node_index, self.depth - 1, 0, usize::MAX, false) as f32;
             total += minmax;
             let move_found = edge.weight().clone();
             all_moves_found.push((minmax, move_found.0, move_found.1));
