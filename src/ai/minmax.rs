@@ -93,7 +93,7 @@ impl <O: Platform> AI<O> for MinMax<O> {
         self.color = color;
     }
 
-    fn give_all_options(&mut self, board:&Board, _verbose: bool) -> Vec<(f32, usize, Direction)> {
+    fn give_all_options(&mut self, board:&Board, _verbose: bool) -> (f32, Vec<(f32, usize, Direction)>) {
         self.graph.clear();
         let origin = self.graph.add_node(BoardEvaluation::new(board.clone(), self.color.clone(), 0));
         let mut to_explore = vec![origin];
@@ -124,15 +124,20 @@ impl <O: Platform> AI<O> for MinMax<O> {
             to_explore = to_explore_next;
         }
         let mut total = 0.0;
+        let mut best_minmax = 0;
         let mut all_moves_found = vec![];
         for edge in self.graph.edges(origin) {
             let target_node_index = edge.target();
-            let minmax = self.minmax_score(target_node_index, self.depth - 1, 0, usize::MAX, false) as f32;
-            total += minmax;
+            let minmax = self.minmax_score(target_node_index, self.depth - 1, 0, usize::MAX, false);
+            total += minmax as f32;
             let move_found = edge.weight().clone();
-            all_moves_found.push((minmax, move_found.0, move_found.1));
+            all_moves_found.push((minmax as f32, move_found.0, move_found.1));
+            if minmax > best_minmax {best_minmax = minmax;}
         }
         all_moves_found.iter_mut().for_each(|x| x.0 /= total);
-        all_moves_found
+        // indicates draw
+        if best_minmax == 100 { best_minmax = 1000;}
+        let board_eval = best_minmax as f32 / 2000.0;
+        (board_eval, all_moves_found)
     }
 }

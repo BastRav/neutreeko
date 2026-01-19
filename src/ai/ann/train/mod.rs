@@ -78,7 +78,6 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
             let mut to_feed = vec![];
             let mut board = Board::default_new();
             let mut number_moves = 0;
-            let mut board_eval = 1.0;
             while board.winner().is_none() {
                 let alphazeutreeko_color = self.alphazeutreeko.color().clone();
                 println!("Current board");
@@ -88,18 +87,18 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
                 if board.next_player == Some(alphazeutreeko_color.clone()) {
                     println!("AlphaZeutreeko is playing");
                     possible_moves = self.alphazeutreeko.give_all_options(&board, true);
-                    best_move = self.alphazeutreeko.best_move_from_vec(&possible_moves, false);
+                    best_move = self.alphazeutreeko.best_move_from_vec(&possible_moves.1, false);
                 }
                 else if !has_opponent {
                     println!("AlphaZeutreeko is playing against itself");
                     self.alphazeutreeko.set_color(alphazeutreeko_color.other_color());
                     possible_moves = self.alphazeutreeko.give_all_options(&board, true);
-                    best_move = self.alphazeutreeko.best_move_from_vec(&possible_moves, false);
+                    best_move = self.alphazeutreeko.best_move_from_vec(&possible_moves.1, false);
                 }
                 else {
                     println!("Opponent is playing");
                     possible_moves = self.opponent.as_mut().unwrap().give_all_options(&board, false);
-                    best_move = self.opponent.as_mut().unwrap().best_move_from_vec(&possible_moves, false);
+                    best_move = self.opponent.as_mut().unwrap().best_move_from_vec(&possible_moves.1, false);
                 }
                 
                 to_feed.push((board.clone(), possible_moves.clone()));
@@ -110,7 +109,6 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
                 number_moves += 1;
                 if number_moves > 255 {
                     println!("Game taking too long, consider it a draw");
-                    board_eval = 0.5;
                     draws += 1.0;
                     break;
                 }
@@ -125,10 +123,9 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
             println!("Proceeding to learning");
             for element in to_feed.into_iter(){
                 let input = board_to_input(&board, &self.device);
-                let target = moves_and_value_to_target(&element, board_eval, &self.device);
+                let target = moves_and_value_to_target(&element, &self.device);
                 let illegal_mask = illegal_mask(&board, &self.device);
                 self.train_step(input, target, illegal_mask);
-                board_eval = 1.0 - board_eval;
             }
             if has_opponent {
                 self.alphazeutreeko.set_color(alphazeutreeko_color.other_color());

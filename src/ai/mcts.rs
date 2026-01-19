@@ -158,7 +158,8 @@ impl<P: Policy, O: Platform> MCTSGeneric<P, O> {
         best_child
     }
 
-    pub fn choose_final_move_give_all_options(&self, origin: NodeIndex) -> Vec<(f32, usize, Direction)> {
+    pub fn choose_final_move_give_all_options(&self, origin: NodeIndex) -> (f32, Vec<(f32, usize, Direction)>) {
+        let origin_node = self.graph.node_weight(origin).unwrap();
         let mut moves_found = vec![];
         let mut total_visits = 0.0;
         for edge in self.graph.edges(origin) {
@@ -169,7 +170,7 @@ impl<P: Policy, O: Platform> MCTSGeneric<P, O> {
             total_visits += visits;
         }
         moves_found.iter_mut().for_each(|x| x.0 /= total_visits);
-        moves_found
+        (origin_node.wins / origin_node.visits as f32 , moves_found)
     }
 }
 
@@ -203,7 +204,7 @@ impl<P: Policy, O: Platform> AI<O> for MCTSGeneric<P, O> {
         self.color = color;
     }
 
-    fn give_all_options(&mut self, board:&Board, verbose: bool) -> Vec<(f32, usize, Direction)> {
+    fn give_all_options(&mut self, board:&Board, verbose: bool) -> (f32, Vec<(f32, usize, Direction)>) {
         self.graph.clear();
         let first_prediction = self.policy.predict(board);
         if verbose {
@@ -242,7 +243,7 @@ impl<O: Platform> AI<O> for MCTS<O> {
         self.mcts.color = color;
     }
 
-    fn give_all_options(&mut self, board:&Board, verbose:bool) -> Vec<(f32, usize, Direction)> {
+    fn give_all_options(&mut self, board:&Board, verbose:bool) -> (f32, Vec<(f32, usize, Direction)>) {
         self.mcts.give_all_options(board, verbose)
     }
 }

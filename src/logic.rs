@@ -29,7 +29,7 @@ impl Pawn {
     }
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, Hash)]
 pub struct Board {
     pub number_of_rows: u8,
     pub number_of_columns: u8,
