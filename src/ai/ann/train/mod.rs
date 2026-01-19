@@ -25,7 +25,7 @@ pub struct PolicyValueTarget<B: AutodiffBackend> {
 
 pub struct ANNTrainer<B: AutodiffBackend, A: AI<NativePlatform>> {
     pub alphazeutreeko: AlphaZeutreeko<B, NativePlatform>,
-    pub opponent: A,
+    pub opponent: Option<A>,
     pub optimizer: OptimizerAdaptor<Adam, ANN<B>, B>,
     pub device: Device<B>,
     pub recorder: BinFileRecorder<FullPrecisionSettings>,
@@ -36,7 +36,7 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
         let device = B::Device::default();
         let optimizer = AdamConfig::new().init();
         let alphazeutreeko = AlphaZeutreeko::new(Color::Green, 6);
-        let opponent = AI::new(Color::Yellow, 4);
+        let opponent = None;
         let recorder = BinFileRecorder::<FullPrecisionSettings>::new();
 
         Self {
@@ -72,14 +72,15 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
     pub fn training_loop(&mut self, max_epoch: usize) {
         let mut victories = 0.0;
         let mut draws = 0.0;
+        let has_opponent = self.opponent.is_some();
         for epoch in 1..=max_epoch {
             println!("Starting iteration {}", epoch);
             let mut to_feed = vec![];
             let mut board = Board::default_new();
             let mut number_moves = 0;
             let mut board_eval = 1.0;
-            let alphazeutreeko_color = self.alphazeutreeko.color().clone();
             while board.winner().is_none() {
+                let alphazeutreeko_color = self.alphazeutreeko.color().clone();
                 println!("Current board");
                 println!("{}", board.str_rep());
                 let possible_moves;
@@ -89,10 +90,16 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
                     possible_moves = self.alphazeutreeko.give_all_options(&board, true);
                     best_move = self.alphazeutreeko.best_move_from_vec(&possible_moves, false);
                 }
+                else if !has_opponent {
+                    println!("AlphaZeutreeko is playing against itself");
+                    self.alphazeutreeko.set_color(alphazeutreeko_color.other_color());
+                    possible_moves = self.alphazeutreeko.give_all_options(&board, true);
+                    best_move = self.alphazeutreeko.best_move_from_vec(&possible_moves, false);
+                }
                 else {
                     println!("Opponent is playing");
-                    possible_moves = self.opponent.give_all_options(&board, false);
-                    best_move = self.opponent.best_move_from_vec(&possible_moves, false);
+                    possible_moves = self.opponent.as_mut().unwrap().give_all_options(&board, false);
+                    best_move = self.opponent.as_mut().unwrap().best_move_from_vec(&possible_moves, false);
                 }
                 
                 to_feed.push((board.clone(), possible_moves.clone()));
@@ -108,7 +115,8 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
                     break;
                 }
             }
-            if board.winner() == Some(alphazeutreeko_color.clone()) {
+            let alphazeutreeko_color = self.alphazeutreeko.color().clone();
+            if has_opponent && board.winner() == Some(alphazeutreeko_color.clone()) {
                 victories += 1.0;
                 println!("AlphaZeutreeko won!!!");
             }
@@ -122,8 +130,10 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
                 self.train_step(input, target, illegal_mask);
                 board_eval = 1.0 - board_eval;
             }
-            self.alphazeutreeko.set_color(alphazeutreeko_color.other_color());
-            self.opponent.set_color(alphazeutreeko_color);
+            if has_opponent {
+                self.alphazeutreeko.set_color(alphazeutreeko_color.other_color());
+                self.opponent.as_mut().unwrap().set_color(alphazeutreeko_color);
+            }
         }
         println!("Victories: {:.1}%, Draws: {:.1}%", 100.0*victories/max_epoch as f32, 100.0*draws/max_epoch as f32);
     }
