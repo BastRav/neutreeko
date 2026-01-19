@@ -77,6 +77,8 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
             let mut board_eval = 1.0;
             let alphazeutreeko_color = self.alphazeutreeko.color().clone();
             while board.winner().is_none() {
+                println!("Current board");
+                println!("{}", board.str_rep());
                 let possible_moves;
                 let best_move;
                 if board.next_player == Some(alphazeutreeko_color.clone()) {

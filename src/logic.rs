@@ -101,6 +101,33 @@ impl Board {
         Self::new(5, 5, pawns, Some(Color::Green))
     }
 
+    pub fn str_rep(&self) -> String {
+        let mut result = String::new();
+        let mut grid = vec![vec![". ".to_string(); self.number_of_columns as usize]; self.number_of_rows as usize];
+
+        for (index, pawn) in self.pawns.iter().enumerate() {
+            let symbol = match pawn.color {
+                Color::Green => format!("G{}", index),
+                Color::Yellow => format!("Y{}", index),
+            };
+            grid[pawn.position.row as usize][pawn.position.column as usize] = symbol;
+        }
+
+        for row in &grid {
+            for cell in row {
+                result.push_str(&format!("{} ", cell));
+            }
+            result.push('\n');
+        }
+
+        if let Some(color) = &self.next_player {
+            result.push_str(&format!("Next player: {:?}\n", color));
+        } else {
+            result.push_str("Game over\n");
+        }
+        result
+    }
+
     fn is_valid(&self) -> bool {
         let mut occupied_positions_values: HashSet<Position> = HashSet::new();
         for pawn in self.pawns.iter() {
