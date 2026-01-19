@@ -2,9 +2,9 @@ pub mod minmax;
 pub mod mcts;
 pub mod ann;
 pub mod alphazeutreeko;
-use crate::logic::{Direction, Board, Color};
+use crate::{logic::{Board, Color, Direction}, platform::Platform};
 
-pub trait AI: Clone {
+pub trait AI<O: Platform>: Clone {
     fn color(&self) -> &Color;
     fn set_color(&mut self, color:Color);
     fn new(color: Color, depth: usize) -> Self;
@@ -16,5 +16,23 @@ pub trait AI: Clone {
         Some(self.best_move(board))
     }
 
-    fn best_move(&mut self, board:&Board) -> (usize, Direction);
+    fn best_move(&mut self, board:&Board) -> (usize, Direction) {
+        let all_options = self.give_all_options(board);
+        let mut best_moves_found = vec![];
+        let mut best_score = 0.0;
+        for option in all_options {
+            O::print(&format!("Considering move {:?} with score {}", (option.1, option.2.clone()), option.0));
+            if option.0 > best_score {
+                best_score = option.0;
+                best_moves_found = vec![(option.1, option.2.clone())];
+            } else if option.0 == best_score {
+                best_moves_found.push((option.1, option.2.clone()));
+            }
+        }
+        let best_move_found = best_moves_found[(O::random() * best_moves_found.len() as f32).floor() as usize].clone();
+        O::print(&format!("==Best move found: {:?} with score {}==", best_move_found, best_score));
+        (best_move_found.0, best_move_found.1)
+    }
+
+    fn give_all_options(&mut self, board:&Board) -> Vec<(f32, usize, Direction)>;
 }

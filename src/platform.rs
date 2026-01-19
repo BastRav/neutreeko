@@ -1,8 +1,10 @@
 use wasm_bindgen::prelude::*;
+use log::info;
 
 pub trait Platform: Clone {
     fn now() -> f64;
     fn random() -> f32;
+    fn print(str_print: &str);
 }
 
 #[derive(Clone)]
@@ -24,6 +26,10 @@ impl Platform for WasmPlatform {
         }
         random() as f32
     }
+
+    fn print(str_print: &str) {
+        info!("{}", str_print);
+    }
 }
 
 #[derive(Clone)]
@@ -41,5 +47,9 @@ impl Platform for NativePlatform {
     fn random() -> f32 {
         use rand::Rng;
         rand::rng().random()
+    }
+
+    fn print(str_print: &str) {
+        println!("{}", str_print);
     }
 }

@@ -2,12 +2,13 @@ mod block;
 pub mod inputouput;
 pub mod train;
 
-use crate::logic::{Color, Board, Direction};
+use std::marker::PhantomData;
+
+use crate::{logic::{Board, Color, Direction}, platform::Platform};
 use super::AI;
 
 use inputouput::{board_to_input, output_to_moves};
 
-use log::info;
 use burn::{
     module::Module,
     nn::{
@@ -105,17 +106,19 @@ impl ANNConfig {
 
 
 #[derive(Clone)]
-pub struct ANNSolo<B: Backend> {
+pub struct ANNSolo<B: Backend, O:Platform> {
     color: Color,
     ann: ANN<B>,
+    _platform: PhantomData<O>,
 }
 
-impl<B: Backend> AI for ANNSolo<B> {
+impl<B: Backend, O: Platform> AI<O> for ANNSolo<B, O> {
     fn new(color: Color, _difficulty: usize) -> Self {
         let device = B::Device::default();
         Self {
             color,
             ann: ANNConfig::init(32, &device),
+            _platform: PhantomData,
         }
     }
 
@@ -127,13 +130,9 @@ impl<B: Backend> AI for ANNSolo<B> {
         self.color = color;
     }
 
-    fn best_move(&mut self, board:&Board) -> (usize, Direction) {
+    fn give_all_options(&mut self, board:&Board) -> Vec<(f32, usize, Direction)> {
         let (board_eval, moves_eval) = self.ann.predict(board);
-        info!("ANN board evaluation for color {:?}: {}", self.color(), board_eval);
-        let mut output = moves_eval;
-        let output_print: Vec<(f32, usize, Direction)> = output.clone().into_iter().map(|x| (x.0, x.1, x.2)).collect();
-        info!("ANN possible moves with probabilities: {:?}", output_print);
-        let best_move = output.pop().unwrap();
-        (best_move.1, best_move.2)
+        O::print(&format!("ANN board evaluation for color {:?}: {}", self.color(), board_eval));
+        moves_eval.into_iter().map(|x| (x.0, x.1, x.2)).collect()
     }
 }

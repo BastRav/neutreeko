@@ -20,29 +20,32 @@ pub struct PolicyValueTarget<B: AutodiffBackend> {
     pub policy: Tensor<B, 2>,
 }
 
-pub struct ANNTrainer<B: AutodiffBackend> {
+pub struct ANNTrainer<B: AutodiffBackend, A: AI<NativePlatform>> {
     pub alphazeutreeko: AlphaZeutreeko<B, NativePlatform>,
+    pub opponent: A,
     pub optimizer: OptimizerAdaptor<Adam, ANN<B>, B>,
     pub device: Device<B>,
     pub recorder: BinFileRecorder<FullPrecisionSettings>,
 }
 
-impl<B: AutodiffBackend<FloatElem = f32>> ANNTrainer<B> {
+impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A> {
     pub fn new() -> Self {
         let device = B::Device::default();
         let optimizer = AdamConfig::new().init();
         let alphazeutreeko = AlphaZeutreeko::new(Color::Green, 3);
+        let opponent = AI::new(Color::Yellow, 3);
         let recorder = BinFileRecorder::<FullPrecisionSettings>::new();
 
         Self {
             alphazeutreeko,
+            opponent,
             optimizer,
             device,
             recorder
         }
     }
 
-    pub fn loss(&self, output: PolicyValueOutput<B>, target: PolicyValueTarget<B>, illegal_mask: Tensor<B, 2>) -> Tensor<B, 1> {
+    fn loss(&self, output: PolicyValueOutput<B>, target: PolicyValueTarget<B>, illegal_mask: Tensor<B, 2>) -> Tensor<B, 1> {
         let masked_probabilities = output.policy + illegal_mask;
         let log_probabilities = log_softmax(masked_probabilities, 1);
         let policy_loss = -(target.policy * log_probabilities).sum_dim(1).mean();
@@ -50,7 +53,7 @@ impl<B: AutodiffBackend<FloatElem = f32>> ANNTrainer<B> {
         policy_loss + value_loss * 0.5
     }
 
-    pub fn train_step(&mut self, input:Tensor<B, 3>, target: PolicyValueTarget<B>, illegal_mask: Tensor<B, 2>) -> Tensor<B, 1> {
+    fn train_step(&mut self, input:Tensor<B, 3>, target: PolicyValueTarget<B>, illegal_mask: Tensor<B, 2>) -> Tensor<B, 1> {
         // Forward pass
         let output = self.alphazeutreeko.mcts.policy.ann.forward(input);
 
@@ -63,16 +66,23 @@ impl<B: AutodiffBackend<FloatElem = f32>> ANNTrainer<B> {
         loss
     }
 
-    pub fn training_loop(&mut self, max_epoch: i32) {
+    pub fn training_loop(&mut self, max_epoch: usize) {
         for epoch in 1..=max_epoch {
             println!("Starting iteration {}", epoch);
             let mut to_feed = vec![];
             let mut board = Board::default_new();
             let mut number_moves = 0;
             let mut board_eval = 1.0;
+            let alphazeutreeko_color = self.alphazeutreeko.color().clone();
             while board.winner().is_none() {
-                self.alphazeutreeko.set_color(board.next_player.clone().unwrap());
-                let possible_moves = self.alphazeutreeko.mcts.give_all_options(&board);
+                let possible_moves;
+                if board.next_player == Some(alphazeutreeko_color.clone()) {
+                    possible_moves = self.alphazeutreeko.give_all_options(&board);
+                }
+                else {
+                    possible_moves = self.opponent.give_all_options(&board);
+                }
+                
                 to_feed.push((board.clone(), possible_moves.clone()));
                 let best_move = possible_moves.iter().max_by(|a, b| b.0.partial_cmp(&a.0).unwrap()).unwrap();
                 let moved = board.move_pawn_until_blocked(best_move.1, &best_move.2);
@@ -94,8 +104,11 @@ impl<B: AutodiffBackend<FloatElem = f32>> ANNTrainer<B> {
                 self.train_step(input, target, illegal_mask);
                 board_eval = 1.0 - board_eval;
             }
+            self.alphazeutreeko.set_color(alphazeutreeko_color.other_color());
+            self.opponent.set_color(alphazeutreeko_color);
         }
     }
+
     pub fn save(&self, filepath: &str) -> Result<(), Box<dyn std::error::Error>> {
         self.alphazeutreeko.mcts.policy.ann.clone().save_file(filepath, &self.recorder)?;
         Ok(())

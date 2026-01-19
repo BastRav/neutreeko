@@ -1,22 +1,15 @@
 use std::vec;
+use std::marker::PhantomData;
 
-use crate::logic::{Board, Color, Direction};
+use crate::{
+    logic::{Board, Color, Direction},
+    platform::Platform,
+};
 use super::AI;
-use wasm_bindgen::prelude::*;
-use log::info;
+
 use petgraph::Graph;
 use petgraph::visit::EdgeRef;
 use petgraph::prelude::NodeIndex;
-
-#[wasm_bindgen]
-extern "C" {
-    #[wasm_bindgen(js_namespace = Math)]
-    fn random() -> f64;
-}
-
-fn get_random_f32() -> f32 {
-    random() as f32
-}
 
 #[derive(Clone)]
 pub struct BoardEvaluation {
@@ -43,13 +36,14 @@ impl BoardEvaluation {
 }
 
 #[derive(Clone)]
-pub struct MinMax {
+pub struct MinMax<O: Platform> {
     pub color: Color,
     pub depth: usize,
     pub graph: Graph<BoardEvaluation, (usize, Direction)>,
+    pub _platform: PhantomData<O>,
 }
 
-impl MinMax{
+impl <O: Platform> MinMax<O> {
     fn minmax_score(&self, node_index: NodeIndex, depth_remaining: usize, mut alpha: isize, mut beta: isize, maximizing_player: bool) -> isize {
         if depth_remaining == 0 {
             return self.graph.node_weight(node_index).unwrap().score;
@@ -81,12 +75,13 @@ impl MinMax{
     }
 }
 
-impl AI for MinMax {
+impl <O: Platform> AI<O> for MinMax<O> {
     fn new(color: Color, depth: usize) -> Self {
         Self {
             color,
             depth,
             graph: Graph::<BoardEvaluation, (usize, Direction)>::new(),
+            _platform: PhantomData,
         }
     }
 
@@ -98,7 +93,7 @@ impl AI for MinMax {
         self.color = color;
     }
 
-    fn best_move(&mut self, board:&Board) -> (usize, Direction) {
+    fn give_all_options(&mut self, board:&Board) -> Vec<(f32, usize, Direction)> {
         self.graph.clear();
         let origin = self.graph.add_node(BoardEvaluation::new(board.clone(), self.color.clone(), 0));
         let mut to_explore = vec![origin];
@@ -128,22 +123,16 @@ impl AI for MinMax {
             }
             to_explore = to_explore_next;
         }
-        let mut best_score = isize::MIN;
-        let mut best_moves_found = vec![];
+        let mut total = 0.0;
+        let mut all_moves_found = vec![];
         for edge in self.graph.edges(origin) {
             let target_node_index = edge.target();
-            let minmax = self.minmax_score(target_node_index, self.depth - 1, isize::MIN, isize::MAX, false);
-            info!("Considering move {:?} with minmax score {}", edge.weight(), minmax);
-            if minmax > best_score {
-                best_score = minmax;
-                best_moves_found = vec![edge.weight().clone()];
-            }
-            if minmax == best_score {
-                best_moves_found.push(edge.weight().clone());
-            }
+            let minmax = self.minmax_score(target_node_index, self.depth - 1, isize::MIN, isize::MAX, false) as f32;
+            total += minmax;
+            let move_found = edge.weight().clone();
+            all_moves_found.push((minmax, move_found.0, move_found.1));
         }
-        let best_move_found = best_moves_found[(get_random_f32() * best_moves_found.len() as f32).floor() as usize].clone();
-        info!("==Best move found: {:?} with score {}==", best_move_found, best_score);
-        best_move_found
+        all_moves_found.iter_mut().for_each(|x| x.0 /= total);
+        all_moves_found
     }
 }

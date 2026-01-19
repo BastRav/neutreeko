@@ -32,7 +32,7 @@ pub struct AlphaZeutreeko <B: Backend, O: Platform> {
     pub mcts: MCTSGeneric<ANNPolicy<B>, O>,
 }
 
-impl<B: Backend, O: Platform> AI for AlphaZeutreeko<B, O> {
+impl<B: Backend, O: Platform> AI<O> for AlphaZeutreeko<B, O> {
     fn color(&self) -> &Color {
         &self.mcts.color
     }
@@ -48,7 +48,7 @@ impl<B: Backend, O: Platform> AI for AlphaZeutreeko<B, O> {
         }
     }
 
-    fn best_move(&mut self, board:&Board) -> (usize, Direction) {
-        self.mcts.best_move(board)
+    fn give_all_options(&mut self, board:&Board) -> Vec<(f32, usize, Direction)> {
+        self.mcts.give_all_options(board)
     }
 }

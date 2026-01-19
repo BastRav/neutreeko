@@ -183,18 +183,6 @@ impl<P: Policy, O: Platform> MCTSGeneric<P, O> {
         moves_found.iter_mut().for_each(|x| x.0 /= total_visits);
         moves_found
     }
-
-    pub fn give_all_options(&mut self, board:&Board) -> Vec<(f32, usize, Direction)> {
-        self.graph.clear();
-        let first_prediction = self.policy.predict(board);
-        let origin = self.graph.add_node(MCTSNode::new(board.clone(), self.color.other_color(), first_prediction.1, first_prediction.0));
-
-        let start_time = O::now();
-        while O::now() - start_time < self.time_allowed_ms {
-            self.iterate(origin);
-        }
-        self.choose_final_move_give_all_options(origin)
-    }
 }
 
 #[derive(Clone)]
@@ -207,7 +195,7 @@ impl Policy for TrivialPolicy {
     }
 }
 
-impl<P: Policy, O: Platform> AI for MCTSGeneric<P, O> {
+impl<P: Policy, O: Platform> AI<O> for MCTSGeneric<P, O> {
     fn new(color: Color, difficulty: usize) -> Self {
         info!("Creating MCTS AI with trivial policy? {}", P::IS_TRIVIAL);
         Self {
@@ -227,20 +215,16 @@ impl<P: Policy, O: Platform> AI for MCTSGeneric<P, O> {
         self.color = color;
     }
 
-    fn best_move(&mut self, board:&Board) -> (usize, Direction) {
+    fn give_all_options(&mut self, board:&Board) -> Vec<(f32, usize, Direction)> {
         self.graph.clear();
         let first_prediction = self.policy.predict(board);
         let origin = self.graph.add_node(MCTSNode::new(board.clone(), self.color.other_color(), first_prediction.1, first_prediction.0));
 
         let start_time = O::now();
-        let mut iterations = 0;
         while O::now() - start_time < self.time_allowed_ms {
             self.iterate(origin);
-            iterations += 1;
         }
-        info!("MCTS completed {} iterations", iterations);
-
-        self.choose_final_move(origin)
+        self.choose_final_move_give_all_options(origin)
     }
 }
 
@@ -249,7 +233,7 @@ pub struct MCTS<O: Platform> {
     pub mcts: MCTSGeneric<TrivialPolicy, O>,
 }
 
-impl<O: Platform> AI for MCTS<O> {
+impl<O: Platform> AI<O> for MCTS<O> {
     fn new(color: Color, difficulty: usize) -> Self {
         Self {
             mcts: MCTSGeneric::new(color, difficulty),
@@ -264,7 +248,7 @@ impl<O: Platform> AI for MCTS<O> {
         self.mcts.color = color;
     }
 
-    fn best_move(&mut self, board:&Board) -> (usize, Direction) {
-        self.mcts.best_move(board)
+    fn give_all_options(&mut self, board:&Board) -> Vec<(f32, usize, Direction)> {
+        self.mcts.give_all_options(board)
     }
 }

@@ -131,7 +131,7 @@ impl Component for App {
                         // Spawn async task to calculate AI move
                         let board = self.board.clone();
                         let link = ctx.link().clone();
-                        let mut ai = MinMax::new(color.clone(), self.difficulty_selected);
+                        let mut ai: MinMax<WasmPlatform> = MinMax::new(color.clone(), self.difficulty_selected);
                         wasm_bindgen_futures::spawn_local(async move {
                             // Small delay to allow browser to render player's move first
                             sleep(Duration::from_millis(50)).await;
@@ -167,7 +167,7 @@ impl Component for App {
                         // Spawn async task to calculate AI move
                         let board = self.board.clone();
                         let link = ctx.link().clone();
-                        let mut ai: ANNSolo<NdArray<f32, i32>> = ANNSolo::new(color.clone(), self.difficulty_selected);
+                        let mut ai: ANNSolo<NdArray<f32, i32>, WasmPlatform> = ANNSolo::new(color.clone(), self.difficulty_selected);
                         wasm_bindgen_futures::spawn_local(async move {
                             // Small delay to allow browser to render player's move first
                             sleep(Duration::from_millis(50)).await;
