@@ -110,8 +110,11 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
             }
             if board.winner() == Some(alphazeutreeko_color.clone()) {
                 victories += 1.0;
+                println!("AlphaZeutreeko won!!!");
             }
-            println!("Game done, proceeding to learning");
+            println!("Final board");
+            println!("{}", board.str_rep());
+            println!("Proceeding to learning");
             for element in to_feed.into_iter(){
                 let input = board_to_input(&board, &self.device);
                 let target = moves_and_value_to_target(&element, board_eval, &self.device);

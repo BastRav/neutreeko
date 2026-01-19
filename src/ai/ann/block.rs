@@ -4,9 +4,8 @@ use burn::{
         BatchNorm, BatchNormConfig, PaddingConfig2d, Relu, Tanh, Linear, LinearConfig,
         conv::{Conv2d, Conv2dConfig},
     },
-    tensor::{Device, Tensor, backend::Backend, activation::{sigmoid}},
+    tensor::{Device, Tensor, backend::Backend, activation::{sigmoid, log_softmax}},
 };
-//use log::info;
 
 /// ResNet [basic residual block](https://paperswithcode.com/method/residual-block) implementation.
 #[derive(Module, Debug)]
@@ -156,6 +155,6 @@ impl<B: Backend> PolicyHead<B> {
         //info!("After flatten shape: {:?}", out.shape());
         let out = self.linear.forward(out);
         //info!("Policy head output shape: {:?}", out.shape());
-        out
+        log_softmax(out, 1)
     }
 }

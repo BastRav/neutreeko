@@ -28,7 +28,7 @@ where B: Backend {
     let tensor_data = tensor.to_data().into_vec().unwrap();
 
     let mut possible_moves_proba = vec![];
-    let mut min_proba = f32::MIN;
+    let mut min_proba = f32::MAX;
     for possible_move in possible_moves.iter() {
         let pawn_position = board.pawns[possible_move.0].position.clone();
         let output_index = position_direction_to_index((pawn_position.row, pawn_position.column),possible_move.1.clone());
@@ -38,16 +38,12 @@ where B: Backend {
         }
         possible_moves_proba.push((proba, possible_move.0, possible_move.1.clone(), possible_move.2.clone()));
     }
-
     // Normalize probabilities
     if min_proba < 0.0 { 
         possible_moves_proba.iter_mut().for_each(|x| x.0 += min_proba);
     }
     let total: f32 = possible_moves_proba.iter().map(|x| x.0).sum();
     possible_moves_proba.iter_mut().for_each(|x| x.0 /= total);
-
-    // Sort by probability (descending)
-    possible_moves_proba.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
 
     possible_moves_proba
 }

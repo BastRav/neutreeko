@@ -7,7 +7,6 @@ use crate::{
 };
 use super::AI;
 
-use log::info;
 use petgraph::Graph;
 use petgraph::visit::EdgeRef;
 use petgraph::prelude::NodeIndex;
@@ -151,25 +150,6 @@ impl<P: Policy, O: Platform> MCTSGeneric<P, O> {
         best_child
     }
 
-    pub fn choose_final_move(&self, origin: NodeIndex) -> (usize, Direction) {
-        let mut best_moves_found = vec![];
-        let mut best_score = 0;
-        for edge in self.graph.edges(origin) {
-            let target_node_index = edge.target();
-            let visits = self.graph.node_weight(target_node_index).unwrap().visits;
-            info!("Considering move {:?} with MCTS score {}", edge.weight(), visits);
-            if visits > best_score {
-                best_score = visits;
-                best_moves_found = vec![edge.weight().clone()];
-            } else if visits == best_score {
-                best_moves_found.push(edge.weight().clone());
-            }
-        }
-        let best_move_found = best_moves_found[(O::random() * best_moves_found.len() as f32).floor() as usize].clone();
-        info!("==Best move found: {:?} with score {}==", best_move_found, best_score);
-        (best_move_found.1, best_move_found.2)
-    }
-
     pub fn choose_final_move_give_all_options(&self, origin: NodeIndex) -> Vec<(f32, usize, Direction)> {
         let mut moves_found = vec![];
         let mut total_visits = 0.0;
@@ -197,7 +177,7 @@ impl Policy for TrivialPolicy {
 
 impl<P: Policy, O: Platform> AI<O> for MCTSGeneric<P, O> {
     fn new(color: Color, difficulty: usize) -> Self {
-        info!("Creating MCTS AI with trivial policy? {}", P::IS_TRIVIAL);
+        O::print(&format!("Creating MCTS AI with trivial policy? {}", P::IS_TRIVIAL));
         Self {
             color,
             time_allowed_ms: (difficulty.pow(3)) as f64 * 0.05 * 1000.0,
@@ -218,6 +198,10 @@ impl<P: Policy, O: Platform> AI<O> for MCTSGeneric<P, O> {
     fn give_all_options(&mut self, board:&Board) -> Vec<(f32, usize, Direction)> {
         self.graph.clear();
         let first_prediction = self.policy.predict(board);
+        O::print(&format!("Policy gives board eval {}", first_prediction.0));
+        for element in first_prediction.1.clone().into_iter() {
+            O::print(&format!("Policy gives eval {} to move {:?}", element.0, (element.1, element.2)));
+        }
         let origin = self.graph.add_node(MCTSNode::new(board.clone(), self.color.other_color(), first_prediction.1, first_prediction.0));
 
         let start_time = O::now();

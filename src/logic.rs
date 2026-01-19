@@ -17,7 +17,7 @@ impl Color {
     }
 }
 
-#[derive(PartialEq, Eq, Hash, Clone)]
+#[derive(PartialEq, Eq, Hash, Clone, Debug)]
 pub struct Pawn {
     pub color: Color,
     pub position: Position,
@@ -29,7 +29,7 @@ impl Pawn {
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Board {
     pub number_of_rows: u8,
     pub number_of_columns: u8,
@@ -49,7 +49,7 @@ pub enum Direction {
     DownRight
 }
 
-#[derive(PartialEq, Eq, Hash, Clone)]
+#[derive(PartialEq, Eq, Hash, Clone, Debug)]
 pub struct Position {
     pub row: u8,
     pub column: u8,
