@@ -6,6 +6,7 @@ use crate::logic::{Direction, Board, Color};
 
 pub trait AI: Clone {
     fn color(&self) -> &Color;
+    fn set_color(&mut self, color:Color);
     fn new(color: Color, depth: usize) -> Self;
 
     fn ai_play(&mut self, board:&Board) -> Option<(usize, Direction)> {

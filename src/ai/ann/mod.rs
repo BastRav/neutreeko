@@ -118,8 +118,13 @@ impl<B: Backend> AI for ANNSolo<B> {
             ann: ANNConfig::init(32, &device),
         }
     }
+
     fn color(&self) -> &Color {
         &self.color
+    }
+
+    fn set_color(&mut self, color:Color){
+        self.color = color;
     }
 
     fn best_move(&mut self, board:&Board) -> (usize, Direction) {

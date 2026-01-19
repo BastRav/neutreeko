@@ -7,7 +7,7 @@ use gloo_timers::future::sleep;
 use std::time::Duration;
 use burn::backend::ndarray::NdArray;
 
-use crate::ai::mcts::WasmPlatform;
+use crate::platform::WasmPlatform;
 use crate::ai::{AI, minmax::MinMax, mcts::MCTS, ann::ANNSolo, alphazeutreeko::AlphaZeutreeko};
 use crate::logic::{Board, Direction, Pawn, Position, Color};
 

@@ -1,58 +1,17 @@
 use std::vec;
 use std::marker::PhantomData;
 
-use crate::logic::{Board, Color, Direction};
+use crate::{
+    logic::{Board, Color, Direction},
+    platform::Platform,
+};
 use super::AI;
 
-use wasm_bindgen::prelude::*;
 use log::info;
 use petgraph::Graph;
 use petgraph::visit::EdgeRef;
 use petgraph::prelude::NodeIndex;
 
-pub trait Platform: Clone {
-    fn now() -> f64;
-    fn random() -> f32;
-}
-
-#[derive(Clone)]
-pub struct WasmPlatform;
-
-impl Platform for WasmPlatform {
-    fn now() -> f64 {
-        #[wasm_bindgen(js_namespace = performance)]
-        extern "C" {
-            fn now() -> f64;
-        }
-        now()
-    }
-
-    fn random() -> f32 {
-        #[wasm_bindgen(js_namespace = Math)]
-        extern "C" {
-            fn random() -> f64;
-        }
-        random() as f32
-    }
-}
-
-#[derive(Clone)]
-pub struct NativePlatform;
-
-impl Platform for NativePlatform {
-    fn now() -> f64 {
-        use std::time::{SystemTime, UNIX_EPOCH};
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs_f64() * 1000.0
-    }
-
-    fn random() -> f32 {
-        use rand::Rng;
-        rand::rng().random()
-    }
-}
 
 #[derive(Clone)]
 pub struct MCTSNode {
@@ -264,6 +223,10 @@ impl<P: Policy, O: Platform> AI for MCTSGeneric<P, O> {
         &self.color
     }
 
+    fn set_color(&mut self, color:Color){
+        self.color = color;
+    }
+
     fn best_move(&mut self, board:&Board) -> (usize, Direction) {
         self.graph.clear();
         let first_prediction = self.policy.predict(board);
@@ -295,6 +258,10 @@ impl<O: Platform> AI for MCTS<O> {
 
     fn color(&self) -> &Color {
         self.mcts.color()
+    }
+
+    fn set_color(&mut self, color:Color){
+        self.mcts.color = color;
     }
 
     fn best_move(&mut self, board:&Board) -> (usize, Direction) {

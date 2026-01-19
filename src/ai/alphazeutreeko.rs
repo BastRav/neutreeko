@@ -1,8 +1,13 @@
-use crate::ai::mcts::{MCTSGeneric, Platform, Policy};
-use crate::ai::AI;
-use crate::ai::ann::{ANN, ANNConfig};
+use crate::{
+    ai::{
+        mcts::{MCTSGeneric, Policy},
+        AI,
+        ann::{ANN, ANNConfig},
+    },
+    logic::{Board, Color, Direction},
+    platform::Platform,
+};
 use burn::tensor::backend::Backend;
-use crate::logic::{Board, Color, Direction};
 
 #[derive(Clone)]
 pub struct ANNPolicy<B: Backend> {
@@ -27,15 +32,13 @@ pub struct AlphaZeutreeko <B: Backend, O: Platform> {
     pub mcts: MCTSGeneric<ANNPolicy<B>, O>,
 }
 
-impl<B: Backend, O: Platform> AlphaZeutreeko<B, O> {
-    pub fn set_color(&mut self, color:Color){
-        self.mcts.color = color;
-    }
-}
-
 impl<B: Backend, O: Platform> AI for AlphaZeutreeko<B, O> {
     fn color(&self) -> &Color {
         &self.mcts.color
+    }
+    
+    fn set_color(&mut self, color:Color){
+        self.mcts.color = color;
     }
 
     fn new(color: Color, difficulty: usize) -> Self {

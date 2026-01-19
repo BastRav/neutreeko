@@ -10,8 +10,9 @@ use burn::{
     tensor::{Device, Tensor, activation::log_softmax, backend::AutodiffBackend}
 };
 use crate::{
-    ai::{AI, alphazeutreeko::AlphaZeutreeko, mcts::NativePlatform,},
+    ai::{AI, alphazeutreeko::AlphaZeutreeko},
     logic::{Board, Color},
+    platform::NativePlatform,
 };
 
 pub struct PolicyValueTarget<B: AutodiffBackend> {

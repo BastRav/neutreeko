@@ -94,6 +94,10 @@ impl AI for MinMax {
         &self.color
     }
 
+    fn set_color(&mut self, color:Color){
+        self.color = color;
+    }
+
     fn best_move(&mut self, board:&Board) -> (usize, Direction) {
         self.graph.clear();
         let origin = self.graph.add_node(BoardEvaluation::new(board.clone(), self.color.clone(), 0));
