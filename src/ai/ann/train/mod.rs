@@ -1,6 +1,9 @@
+mod utils;
+use utils::{moves_and_value_to_target, illegal_mask};
+
 use super::{
     ANN, PolicyValueOutput,
-    inputouput::{board_to_input, moves_and_value_to_target, illegal_mask},
+    utils::board_to_input,
 };
 use burn::{
     module::Module,

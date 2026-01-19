@@ -1,5 +1,6 @@
 mod block;
-pub mod inputouput;
+pub mod utils;
+#[cfg(feature = "train")]
 pub mod train;
 
 use std::marker::PhantomData;
@@ -7,7 +8,7 @@ use std::marker::PhantomData;
 use crate::{logic::{Board, Color, Direction}, platform::Platform};
 use super::AI;
 
-use inputouput::{board_to_input, output_to_moves};
+use utils::{board_to_input, output_to_moves};
 
 use burn::{
     module::Module,
