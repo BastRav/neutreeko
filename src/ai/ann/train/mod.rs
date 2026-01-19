@@ -75,6 +75,7 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
         let has_opponent = self.opponent.is_some();
         for epoch in 1..=max_epoch {
             println!("Starting iteration {}", epoch);
+            self.alphazeutreeko.mcts.graph.clear();
             let mut to_feed = vec![];
             let mut board = Board::default_new();
             let mut number_moves = 0;
