@@ -48,7 +48,7 @@ impl<B: Backend, O: Platform> AI<O> for AlphaZeutreeko<B, O> {
         }
     }
 
-    fn give_all_options(&mut self, board:&Board) -> Vec<(f32, usize, Direction)> {
-        self.mcts.give_all_options(board)
+    fn give_all_options(&mut self, board:&Board, verbose:bool) -> Vec<(f32, usize, Direction)> {
+        self.mcts.give_all_options(board, verbose)
     }
 }

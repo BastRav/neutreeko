@@ -11,6 +11,6 @@ use burn::backend::{Autodiff, NdArray};
 fn main() {
     let mut trainer: ANNTrainer<Autodiff<NdArray<f32>>, MinMax<NativePlatform>> = ANNTrainer::new();
     let _ = trainer.load("assets/models/old");
-    trainer.training_loop(2);
+    trainer.training_loop(200);
     let _ = trainer.save("assets/models/new");
 }

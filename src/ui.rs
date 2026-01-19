@@ -135,7 +135,7 @@ impl Component for App {
                         wasm_bindgen_futures::spawn_local(async move {
                             // Small delay to allow browser to render player's move first
                             sleep(Duration::from_millis(50)).await;
-                            let ai_move = ai.ai_play(&board);
+                            let ai_move = ai.ai_play(&board, true);
                             link.send_message(Msg::AiMoveReady(ai_move));
                         });
                     }
@@ -153,7 +153,7 @@ impl Component for App {
                         wasm_bindgen_futures::spawn_local(async move {
                             // Small delay to allow browser to render player's move first
                             sleep(Duration::from_millis(50)).await;
-                            let ai_move = ai.ai_play(&board);
+                            let ai_move = ai.ai_play(&board, true);
                             link.send_message(Msg::AiMoveReady(ai_move));
                         });
                     }
@@ -171,7 +171,7 @@ impl Component for App {
                         wasm_bindgen_futures::spawn_local(async move {
                             // Small delay to allow browser to render player's move first
                             sleep(Duration::from_millis(50)).await;
-                            let ai_move = ai.ai_play(&board);
+                            let ai_move = ai.ai_play(&board, true);
                             link.send_message(Msg::AiMoveReady(ai_move));
                         });
                     }
@@ -189,7 +189,7 @@ impl Component for App {
                         wasm_bindgen_futures::spawn_local(async move {
                             // Small delay to allow browser to render player's move first
                             sleep(Duration::from_millis(50)).await;
-                            let ai_move = ai.ai_play(&board);
+                            let ai_move = ai.ai_play(&board, true);
                             link.send_message(Msg::AiMoveReady(ai_move));
                         });
                     }

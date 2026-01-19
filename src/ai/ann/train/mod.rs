@@ -35,8 +35,8 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
     pub fn new() -> Self {
         let device = B::Device::default();
         let optimizer = AdamConfig::new().init();
-        let alphazeutreeko = AlphaZeutreeko::new(Color::Green, 3);
-        let opponent = AI::new(Color::Yellow, 3);
+        let alphazeutreeko = AlphaZeutreeko::new(Color::Green, 6);
+        let opponent = AI::new(Color::Yellow, 4);
         let recorder = BinFileRecorder::<FullPrecisionSettings>::new();
 
         Self {
@@ -86,13 +86,13 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
                 let best_move;
                 if board.next_player == Some(alphazeutreeko_color.clone()) {
                     println!("AlphaZeutreeko is playing");
-                    possible_moves = self.alphazeutreeko.give_all_options(&board);
-                    best_move = self.alphazeutreeko.best_move_from_vec(&possible_moves);
+                    possible_moves = self.alphazeutreeko.give_all_options(&board, true);
+                    best_move = self.alphazeutreeko.best_move_from_vec(&possible_moves, false);
                 }
                 else {
                     println!("Opponent is playing");
-                    possible_moves = self.opponent.give_all_options(&board);
-                    best_move = self.opponent.best_move_from_vec(&possible_moves);
+                    possible_moves = self.opponent.give_all_options(&board, false);
+                    best_move = self.opponent.best_move_from_vec(&possible_moves, false);
                 }
                 
                 to_feed.push((board.clone(), possible_moves.clone()));

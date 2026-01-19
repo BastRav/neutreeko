@@ -93,7 +93,7 @@ impl <O: Platform> AI<O> for MinMax<O> {
         self.color = color;
     }
 
-    fn give_all_options(&mut self, board:&Board) -> Vec<(f32, usize, Direction)> {
+    fn give_all_options(&mut self, board:&Board, _verbose: bool) -> Vec<(f32, usize, Direction)> {
         self.graph.clear();
         let origin = self.graph.add_node(BoardEvaluation::new(board.clone(), self.color.clone(), 0));
         let mut to_explore = vec![origin];

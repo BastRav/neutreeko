@@ -9,18 +9,20 @@ pub trait AI<O: Platform>: Clone {
     fn set_color(&mut self, color:Color);
     fn new(color: Color, depth: usize) -> Self;
 
-    fn ai_play(&mut self, board:&Board) -> Option<(usize, Direction)> {
+    fn ai_play(&mut self, board:&Board, verbose: bool) -> Option<(usize, Direction)> {
         if board.next_player != Some(self.color().clone()) {
             return None;
         }
-        Some(self.best_move(board))
+        Some(self.best_move(board, verbose))
     }
 
-    fn best_move_from_vec(&mut self, moves: &Vec<(f32, usize, Direction)>) -> (usize, Direction) {
+    fn best_move_from_vec(&mut self, moves: &Vec<(f32, usize, Direction)>, verbose: bool) -> (usize, Direction) {
         let mut best_moves_found = vec![];
         let mut best_score = 0.0;
         for option in moves {
-            O::print(&format!("Considering move {:?} with score {}", (option.1, option.2.clone()), option.0));
+            if verbose {
+                O::print(&format!("Considering move {:?} with score {}", (option.1, option.2.clone()), option.0));
+            }
             if option.0 > best_score {
                 best_score = option.0;
                 best_moves_found = vec![(option.1, option.2.clone())];
@@ -29,14 +31,16 @@ pub trait AI<O: Platform>: Clone {
             }
         }
         let best_move_found = best_moves_found[(O::random() * best_moves_found.len() as f32).floor() as usize].clone();
-        O::print(&format!("==Best move found: {:?} with score {}==", best_move_found, best_score));
+        if verbose {
+            O::print(&format!("==Best move found: {:?} with score {}==", best_move_found, best_score));
+        }
         (best_move_found.0, best_move_found.1)
     }
 
-    fn best_move(&mut self, board:&Board) -> (usize, Direction) {
-        let all_options = self.give_all_options(board);
-        self.best_move_from_vec(&all_options)
+    fn best_move(&mut self, board:&Board, verbose: bool) -> (usize, Direction) {
+        let all_options = self.give_all_options(board, verbose);
+        self.best_move_from_vec(&all_options, verbose)
     }
 
-    fn give_all_options(&mut self, board:&Board) -> Vec<(f32, usize, Direction)>;
+    fn give_all_options(&mut self, board:&Board, verbose: bool) -> Vec<(f32, usize, Direction)>;
 }

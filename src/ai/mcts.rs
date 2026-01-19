@@ -103,10 +103,18 @@ impl<P: Policy, O: Platform> MCTSGeneric<P, O> {
 
     pub fn rollout(&self, node_index: NodeIndex) -> f32 {
         let node = self.graph.node_weight(node_index).unwrap();
-        if P::IS_TRIVIAL {
-            return self.random_rollout(node);
-        } else {
-            return node.board_eval;
+        match node.board.winner() {
+            Some(color) => {
+                if color == node.color.clone() {1.0} else {0.0}
+            }
+            None => {
+                if P::IS_TRIVIAL {
+                    return self.random_rollout(node);
+                }
+                else {
+                    return node.board_eval;
+                }
+            }
         }
     }
 
@@ -195,12 +203,14 @@ impl<P: Policy, O: Platform> AI<O> for MCTSGeneric<P, O> {
         self.color = color;
     }
 
-    fn give_all_options(&mut self, board:&Board) -> Vec<(f32, usize, Direction)> {
+    fn give_all_options(&mut self, board:&Board, verbose: bool) -> Vec<(f32, usize, Direction)> {
         self.graph.clear();
         let first_prediction = self.policy.predict(board);
-        O::print(&format!("Policy gives board eval {}", first_prediction.0));
-        for element in first_prediction.1.clone().into_iter() {
-            O::print(&format!("Policy gives eval {} to move {:?}", element.0, (element.1, element.2)));
+        if verbose {
+            O::print(&format!("Policy gives board eval {}", first_prediction.0));
+            for element in first_prediction.1.clone().into_iter() {
+                O::print(&format!("Policy gives eval {} to move {:?}", element.0, (element.1, element.2)));
+            }
         }
         let origin = self.graph.add_node(MCTSNode::new(board.clone(), self.color.other_color(), first_prediction.1, first_prediction.0));
 
@@ -232,7 +242,7 @@ impl<O: Platform> AI<O> for MCTS<O> {
         self.mcts.color = color;
     }
 
-    fn give_all_options(&mut self, board:&Board) -> Vec<(f32, usize, Direction)> {
-        self.mcts.give_all_options(board)
+    fn give_all_options(&mut self, board:&Board, verbose:bool) -> Vec<(f32, usize, Direction)> {
+        self.mcts.give_all_options(board, verbose)
     }
 }

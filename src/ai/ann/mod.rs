@@ -131,9 +131,11 @@ impl<B: Backend, O: Platform> AI<O> for ANNSolo<B, O> {
         self.color = color;
     }
 
-    fn give_all_options(&mut self, board:&Board) -> Vec<(f32, usize, Direction)> {
+    fn give_all_options(&mut self, board:&Board, verbose: bool) -> Vec<(f32, usize, Direction)> {
         let (board_eval, moves_eval) = self.ann.predict(board);
-        O::print(&format!("ANN board evaluation for color {:?}: {}", self.color(), board_eval));
+        if verbose {
+            O::print(&format!("ANN board evaluation for color {:?}: {}", self.color(), board_eval));
+        }
         moves_eval.into_iter().map(|x| (x.0, x.1, x.2)).collect()
     }
 }

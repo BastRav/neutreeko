@@ -13,7 +13,7 @@ use burn::tensor::{backend::{Backend, AutodiffBackend}, Device, Tensor};
 pub fn illegal_mask<B>(board: &Board, device: &Device<B>) -> Tensor<B, 2>
 where B:Backend {
     let possible_moves = board.get_all_valid_directions_and_resulting_boards();
-    let mut illegal_mask_array = [-1e9; 200];
+    let mut illegal_mask_array = [-1e6; 200];
     for possible_move in possible_moves.iter() {
         let pawn_position = board.pawns[possible_move.0].position.clone();
         let mask_index = position_direction_to_index((pawn_position.row, pawn_position.column),possible_move.1.clone());
