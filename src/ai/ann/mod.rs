@@ -19,6 +19,7 @@ use burn::{
     tensor::{Device, Tensor, backend::Backend},
     config::Config,
 };
+use burn_store::{ModuleSnapshot, BurnpackStore};
 
 use block::{ResidualBlock, ValueHead, PolicyHead};
 
@@ -103,6 +104,14 @@ impl ANNConfig {
             policy_head,
         }
     }
+
+    pub fn init_from_data<B: Backend>(channels: usize, device: &Device<B>) -> ANN<B> {
+        let mut ann = ANNConfig::init(channels, device);
+        static DATA: &[u8] = include_bytes!("../../../assets/models/web/model.bpk");
+        let mut store = BurnpackStore::from_static(DATA);
+        let _ = ann.load_from(&mut store);
+        ann
+    }
 }
 
 
@@ -118,7 +127,7 @@ impl<B: Backend, O: Platform> AI<O> for ANNSolo<B, O> {
         let device = B::Device::default();
         Self {
             color,
-            ann: ANNConfig::init(32, &device),
+            ann: ANNConfig::init_from_data(32, &device),
             _platform: PhantomData,
         }
     }

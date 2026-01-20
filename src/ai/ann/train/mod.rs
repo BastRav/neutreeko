@@ -1,4 +1,5 @@
 mod utils;
+use burn_store::{BurnpackStore, ModuleSnapshot};
 use utils::{moves_and_value_to_target, illegal_mask, opening};
 
 use super::{
@@ -163,6 +164,11 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
     pub fn save(&self, filepath: &str) -> Result<(), Box<dyn std::error::Error>> {
         self.alphazeutreeko.mcts.policy.ann.clone().save_file(filepath, &self.recorder)?;
         Ok(())
+    }
+
+     pub fn save_for_web(&self) {
+        let mut store = BurnpackStore::from_file("assets/models/web/model");
+        let _ = self.alphazeutreeko.mcts.policy.ann.save_into(&mut store);
     }
 
     pub fn load(&mut self, filepath: &str) -> Result<(), Box<dyn std::error::Error>> {

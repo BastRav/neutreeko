@@ -18,7 +18,7 @@ impl<B: Backend> Policy for ANNPolicy<B> {
     const IS_TRIVIAL:bool = false;
     fn new() -> Self {
         Self {
-            ann: ANNConfig::init(32, &B::Device::default()),
+            ann: ANNConfig::init_from_data(32, &B::Device::default()),
         }
     }
 
