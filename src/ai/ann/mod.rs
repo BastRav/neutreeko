@@ -24,8 +24,8 @@ use burn_store::{ModuleSnapshot, BurnpackStore};
 use block::{ResidualBlock, ValueHead, PolicyHead};
 
 pub struct PolicyValueOutput<B: Backend> {
-    pub value: Tensor<B, 1>,
-    pub policy: Tensor<B, 2>,
+    pub value: Tensor<B, 2>,
+    pub policy: Tensor<B, 4>,
 }
 
 #[derive(Module, Debug)]
@@ -40,11 +40,9 @@ pub struct ANN<B: Backend> {
 }
 
 impl<B: Backend> ANN<B> {
-    pub fn forward(&self, input: Tensor<B, 3>) -> PolicyValueOutput<B> {
-        let input_reshaped = input.reshape([1, 2, 5, 5]);
-        //info!("ANN forward pass with input shape: {:?}", input_reshaped.shape());
+    pub fn forward(&self, input: Tensor<B, 4>) -> PolicyValueOutput<B> {
         // First block
-        let out = self.conv1.forward(input_reshaped);
+        let out = self.conv1.forward(input);
         //info!("After conv1 shape: {:?}", out.shape());
         let out = self.bn1.forward(out);
         //info!("After bn1 shape: {:?}", out.shape());

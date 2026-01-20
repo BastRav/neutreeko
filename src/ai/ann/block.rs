@@ -4,7 +4,7 @@ use burn::{
         BatchNorm, BatchNormConfig, PaddingConfig2d, Relu, Tanh, Linear, LinearConfig,
         conv::{Conv2d, Conv2dConfig},
     },
-    tensor::{Device, Tensor, backend::Backend, activation::{sigmoid, log_softmax}},
+    tensor::{Device, Tensor, backend::Backend, activation::sigmoid},
 };
 
 /// ResNet [basic residual block](https://paperswithcode.com/method/residual-block) implementation.
@@ -80,7 +80,7 @@ impl<B: Backend> ValueHead<B> {
         let conv1 = Conv2dConfig::new([channels, channels], [1, 1])
             .with_stride([1, 1])
             .with_padding(PaddingConfig2d::Same)
-            .with_bias(false)
+            .with_bias(true)
             .init(device);
         let bn1 = BatchNormConfig::new(channels).init(device);
         let relu = Relu::new();
@@ -96,7 +96,7 @@ impl<B: Backend> ValueHead<B> {
         }
     }
 
-    pub fn forward(&self, input: Tensor<B, 4>) -> Tensor<B, 1> {
+    pub fn forward(&self, input: Tensor<B, 4>) -> Tensor<B, 2> {
         //info!("Value head forward pass with input shape: {:?}", input.shape());
         let out = self.conv1.forward(input);
         //info!("After conv1 shape: {:?}", out.shape());
@@ -106,7 +106,7 @@ impl<B: Backend> ValueHead<B> {
         //info!("After relu shape: {:?}", out.shape());
         let out = self.tanh.forward(out);
         //info!("After tanh shape: {:?}", out.shape());
-        let out = out.flatten(0, 3);
+        let out = out.flatten(1, 3);
         //info!("After flatten shape: {:?}", out.shape());
         let out = self.linear.forward(out);
         //info!("After linear shape: {:?}", out.shape());
@@ -121,40 +121,33 @@ pub struct PolicyHead<B: Backend> {
     conv1: Conv2d<B>,
     bn1: BatchNorm<B>,
     relu: Relu,
-    linear: Linear<B>,
 }
 
 impl<B: Backend> PolicyHead<B> {
     pub fn new(channels: usize, device: &Device<B>) -> Self {
         // conv1x1
-        let conv1 = Conv2dConfig::new([channels, channels], [1, 1])
+        let conv1 = Conv2dConfig::new([channels, 8], [1, 1])
             .with_stride([1, 1])
             .with_padding(PaddingConfig2d::Same)
-            .with_bias(false)
+            .with_bias(true)
             .init(device);
-        let bn1 = BatchNormConfig::new(channels).init(device);
+        let bn1 = BatchNormConfig::new(8).init(device);
         let relu = Relu::new();
-        let linear = LinearConfig::new(channels * 3 * 3, 200).init(device);
         Self {
             conv1,
             bn1,
             relu,
-            linear,
         }
     }
 
-    pub fn forward(&self, input: Tensor<B, 4>) -> Tensor<B, 2> {
+    pub fn forward(&self, input: Tensor<B, 4>) -> Tensor<B, 4> {
         //info!("Policy head forward pass with input shape: {:?}", input.shape());
         let out = self.conv1.forward(input);
         //info!("After conv1 shape: {:?}", out.shape());
         let out = self.bn1.forward(out);
         //info!("After bn1 shape: {:?}", out.shape());
         let out = self.relu.forward(out);
-        //info!("After relu shape: {:?}", out.shape());
-        let out = out.flatten(1, 3);
-        //info!("After flatten shape: {:?}", out.shape());
-        let out = self.linear.forward(out);
         //info!("Policy head output shape: {:?}", out.shape());
-        log_softmax(out, 1)
+        out
     }
 }

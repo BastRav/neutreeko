@@ -22,8 +22,8 @@ use crate::{
 
 #[derive(Clone)]
 pub struct PolicyValueTarget<B: AutodiffBackend> {
-    pub value: Tensor<B, 1>,
-    pub policy: Tensor<B, 2>,
+    pub value: Tensor<B, 2>,
+    pub policy: Tensor<B, 4>,
 }
 
 pub struct ANNTrainer<B: AutodiffBackend, A: AI<NativePlatform>> {
@@ -54,15 +54,17 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
         }
     }
 
-    fn loss(&self, output: PolicyValueOutput<B>, target: PolicyValueTarget<B>, illegal_mask: Tensor<B, 2>) -> Tensor<B, 1> {
+    fn loss(&self, output: PolicyValueOutput<B>, target: PolicyValueTarget<B>, illegal_mask: Tensor<B, 4>) -> Tensor<B, 1> {
         let masked_probabilities = output.policy + illegal_mask;
-        let log_probabilities = log_softmax(masked_probabilities, 1);
-        let policy_loss = -(target.policy * log_probabilities).sum_dim(1).mean();
+        let flat_probas: Tensor<B, 2> = masked_probabilities.flatten(1, 3);
+        let log_probabilities = log_softmax(flat_probas, 1);
+        let flat_target = target.policy.flatten(1, 3);
+        let policy_loss = -(flat_target * log_probabilities).sum_dim(1).mean();
         let value_loss = MseLoss::new().forward(output.value, target.value, Reduction::Mean);
         policy_loss + value_loss * 0.5
     }
 
-    fn train_step(&mut self, input:Tensor<B, 3>, target: PolicyValueTarget<B>, illegal_mask: Tensor<B, 2>) -> Tensor<B, 1> {
+    fn train_step(&mut self, input:Tensor<B, 4>, target: PolicyValueTarget<B>, illegal_mask: Tensor<B, 4>) -> Tensor<B, 1> {
         // Forward pass
         let output = self.alphazeutreeko.mcts.policy.ann.forward(input);
 

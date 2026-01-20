@@ -4,35 +4,30 @@ use crate::logic::{Board, Direction};
 
 use burn::tensor::{backend::Backend, Device, Tensor};
 
-pub fn board_to_input<B>(board: &Board, device: &Device<B>) -> Tensor<B, 3>
+pub fn board_to_input<B>(board: &Board, device: &Device<B>) -> Tensor<B, 4>
 where B: Backend {
     // 2 channels: current player pawns, opponent pawns
-    let mut input = [[[0.0; 5]; 5]; 2];
+    let mut input = [[[[0.0; 1]; 5]; 5]; 2];
 
     for pawn in board.pawns.iter() {
         let channel = if Some(pawn.color.clone()) == board.next_player { 0 } else { 1 };
-        input[channel][pawn.position.row as usize][pawn.position.column as usize] = 1.0;
+        input[0][channel][pawn.position.row as usize][pawn.position.column as usize] = 1.0;
     }
 
     Tensor::from_data(input, device)
 }
 
-pub fn position_direction_to_index(position: (u8, u8), direction: Direction) -> usize {
-    let (row, col) = position;
-    (row as usize * 5 + col as usize) * 8 + direction as usize
-}
-
-pub fn output_to_moves<B>(board: &Board, tensor: Tensor<B, 2>) -> Vec<(f32, usize, Direction, Board)>
+pub fn output_to_moves<B>(board: &Board, tensor: Tensor<B, 4>) -> Vec<(f32, usize, Direction, Board)>
 where B: Backend {
     let possible_moves = board.get_all_valid_directions_and_resulting_boards();
-    let tensor_data = tensor.to_data().into_vec().unwrap();
+    let tensor_data: Vec<f32> = tensor.to_data().into_vec().unwrap();
 
     let mut possible_moves_proba = vec![];
-    for possible_move in possible_moves.iter() {
-        let pawn_position = board.pawns[possible_move.0].position.clone();
-        let output_index = position_direction_to_index((pawn_position.row, pawn_position.column),possible_move.1.clone());
-        let proba: f32 = tensor_data[output_index];
-        possible_moves_proba.push((proba, possible_move.0, possible_move.1.clone(), possible_move.2.clone()));
+    for (pawn_index, direction, board) in possible_moves.iter() {
+        let pawn_position = board.pawns[*pawn_index].position.clone();
+        let index = (direction.clone() as usize) * 25 + (pawn_position.row as usize) * 5 + pawn_position.column as usize;
+        let proba: f32 = tensor_data[index];
+        possible_moves_proba.push((proba, *pawn_index, direction.clone(), board.clone()));
     }
     // Softmax normalisation
     let max_proba = possible_moves_proba.iter().map(|x| x.0).fold(f32::MIN, f32::max);
