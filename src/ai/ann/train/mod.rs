@@ -9,9 +9,9 @@ use std::collections::HashSet;
 use burn::{
     module::Module,
     nn::loss::{MseLoss, Reduction},
-    optim::{Adam, AdamConfig, GradientsParams, Optimizer, adaptor::OptimizerAdaptor},
+    optim::{Adam, AdamConfig, GradientsParams, Optimizer, adaptor::OptimizerAdaptor, decay::WeightDecayConfig, lr_scheduler::{LrScheduler, cosine::{CosineAnnealingLrScheduler, CosineAnnealingLrSchedulerConfig}}},
     record::{BinFileRecorder, FullPrecisionSettings},
-    tensor::{Device, Tensor, activation::log_softmax, backend::AutodiffBackend}
+    tensor::{Device, Tensor, activation::log_softmax, backend::AutodiffBackend},
 };
 use crate::{
     ai::{AI, alphazeutreeko::AlphaZeutreeko},
@@ -29,6 +29,7 @@ pub struct ANNTrainer<B: AutodiffBackend, A: AI<NativePlatform>> {
     pub alphazeutreeko: AlphaZeutreeko<B, NativePlatform>,
     pub opponent: Option<A>,
     pub optimizer: OptimizerAdaptor<Adam, ANN<B>, B>,
+    pub learning_rate_schedule: CosineAnnealingLrScheduler,
     pub device: Device<B>,
     pub recorder: BinFileRecorder<FullPrecisionSettings>,
 }
@@ -36,7 +37,8 @@ pub struct ANNTrainer<B: AutodiffBackend, A: AI<NativePlatform>> {
 impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A> {
     pub fn new() -> Self {
         let device = B::Device::default();
-        let optimizer = AdamConfig::new().init();
+        let learning_rate_schedule = CosineAnnealingLrSchedulerConfig::new(5e-4, 1000).with_min_lr(5e-5).init().unwrap();
+        let optimizer = AdamConfig::new().with_weight_decay(Some(WeightDecayConfig::new(1e-4))).init();
         let alphazeutreeko = AlphaZeutreeko::new(Color::Green, 6);
         let opponent = None;
         let recorder = BinFileRecorder::<FullPrecisionSettings>::new();
@@ -45,6 +47,7 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
             alphazeutreeko,
             opponent,
             optimizer,
+            learning_rate_schedule,
             device,
             recorder
         }
@@ -67,7 +70,8 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
         let grads = GradientsParams::from_grads(grads, &self.alphazeutreeko.mcts.policy.ann);
 
         // Update self.alphazeutreeko.policy.ann parameters
-        self.alphazeutreeko.mcts.policy.ann = self.optimizer.step(0.001, self.alphazeutreeko.mcts.policy.ann.clone(), grads);
+        let lr = self.learning_rate_schedule.step();
+        self.alphazeutreeko.mcts.policy.ann = self.optimizer.step(lr, self.alphazeutreeko.mcts.policy.ann.clone(), grads);
         loss
     }
 
