@@ -22,12 +22,11 @@ where B:Backend {
     Tensor::from_data([illegal_mask_array], device)
 }
 
-pub fn moves_and_value_to_target<B>(element:&(Board, (f32, Vec<(f32, usize, Direction)>)), device: &Device<B>) -> PolicyValueTarget<B>
+pub fn moves_and_value_to_target<B>(board: &Board, board_eval: f32, moves_eval: &Vec<(f32, usize, Direction)>, device: &Device<B>) -> PolicyValueTarget<B>
 where B: AutodiffBackend {
-    let value = Tensor::from_floats([element.1.0], device);
+    let value = Tensor::from_floats([board_eval], device);
     let mut policy_floats = [0.0; 200];
-    let board = &element.0;
-    for possible_move in element.1.1.iter() {
+    for possible_move in moves_eval.iter() {
         let position = board.pawns[possible_move.1].position.clone();
         let index_to_consider = position_direction_to_index((position.row, position.column), possible_move.2.clone());
         policy_floats[index_to_consider] = possible_move.0

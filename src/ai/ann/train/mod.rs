@@ -122,10 +122,10 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
             println!("Final board");
             println!("{}", board.str_rep());
             println!("Proceeding to learning");
-            for element in to_feed.into_iter(){
-                let input = board_to_input(&board, &self.device);
-                let target = moves_and_value_to_target(&element, &self.device);
-                let illegal_mask = illegal_mask(&board, &self.device);
+            for (board_learn, (board_eval, moves_eval)) in to_feed.into_iter(){
+                let input = board_to_input(&board_learn, &self.device);
+                let target = moves_and_value_to_target(&board_learn, board_eval, &moves_eval, &self.device);
+                let illegal_mask = illegal_mask(&board_learn, &self.device);
                 self.train_step(input, target, illegal_mask);
             }
             if has_opponent {
