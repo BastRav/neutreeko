@@ -1,5 +1,5 @@
 mod utils;
-use utils::{moves_and_value_to_target, illegal_mask};
+use utils::{moves_and_value_to_target, illegal_mask, opening};
 
 use super::{
     ANN, PolicyValueOutput,
@@ -18,6 +18,7 @@ use crate::{
     platform::NativePlatform,
 };
 
+#[derive(Clone)]
 pub struct PolicyValueTarget<B: AutodiffBackend> {
     pub value: Tensor<B, 1>,
     pub policy: Tensor<B, 2>,
@@ -134,6 +135,16 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
             }
         }
         println!("Victories: {:.1}%, Draws: {:.1}%", 100.0*victories/max_epoch as f32, 100.0*draws/max_epoch as f32);
+    }
+
+    pub fn train_opening(&mut self, number_passes: usize) {
+        let opening_sequence = opening(&self.device);
+        for iteration in 1..=number_passes {
+            println!("Starting iteration {}/{}", iteration, number_passes);
+            for (input, target, illegal_mask) in opening_sequence.iter() {
+                self.train_step(input.clone(), target.clone(), illegal_mask.clone());
+            }
+        }
     }
 
     pub fn save(&self, filepath: &str) -> Result<(), Box<dyn std::error::Error>> {
