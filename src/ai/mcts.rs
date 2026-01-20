@@ -1,6 +1,5 @@
 use std::vec;
 use std::marker::PhantomData;
-use std::hash::{DefaultHasher, Hash, Hasher};
 
 use crate::{
     logic::{Board, Color, Direction},
@@ -26,10 +25,8 @@ pub struct MCTSNode {
 
 impl MCTSNode {
     pub fn new(board: Board, color: Color, untried_actions: Vec<(f32, usize, Direction, Board)>, board_eval: f32) -> Self {
-        let mut hasher = DefaultHasher::new();
-        board.hash(&mut hasher);
         Self {
-            board_hash: hasher.finish(),
+            board_hash: board.get_hash(),
             board,
             color,
             visits: 0,
@@ -219,14 +216,10 @@ impl<P: Policy, O: Platform> AI<O> for MCTSGeneric<P, O> {
                 O::print(&format!("Policy gives eval {} to move {:?}", element.0, (element.1, element.2)));
             }
         }
-        let mut hasher = DefaultHasher::new();
-        board.hash(&mut hasher);
-        let board_hash = hasher.finish();
+        let board_hash = board.get_hash();
         let possible_origin = self.graph.node_indices().find(|index| {
             let node = self.graph.node_weight(*index).unwrap();
-            let mut hasher = DefaultHasher::new();
-            node.board.hash(&mut hasher);
-            let index_hash = hasher.finish();
+            let index_hash = node.board.get_hash();
             board_hash == index_hash
         });
         let origin = possible_origin.unwrap_or_else(|| {

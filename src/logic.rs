@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::hash::{Hash, Hasher, DefaultHasher};
 use strum_macros::EnumIter;
 use strum::IntoEnumIterator;
 
@@ -99,6 +100,12 @@ impl Board {
         pawns.push(Pawn::new(Color::Yellow, Position { row: 4, column: 1 }));
         pawns.push(Pawn::new(Color::Yellow, Position { row: 4, column: 3 }));
         Self::new(5, 5, pawns, Some(Color::Green))
+    }
+
+    pub fn get_hash(&self) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        self.hash(&mut hasher);
+        hasher.finish()
     }
 
     pub fn str_rep(&self) -> String {

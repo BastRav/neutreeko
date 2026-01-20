@@ -5,6 +5,7 @@ use super::{
     ANN, PolicyValueOutput,
     utils::board_to_input,
 };
+use std::collections::HashSet;
 use burn::{
     module::Module,
     nn::loss::{MseLoss, Reduction},
@@ -79,6 +80,8 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
             self.alphazeutreeko.mcts.graph.clear();
             let mut to_feed = vec![];
             let mut board = Board::default_new();
+            let mut board_hashes = HashSet::new();
+            board_hashes.insert(board.get_hash());
             let mut number_moves = 0;
             while board.winner().is_none() {
                 let alphazeutreeko_color = self.alphazeutreeko.color().clone();
@@ -111,6 +114,12 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
                 number_moves += 1;
                 if number_moves > 255 {
                     println!("Game taking too long, consider it a draw");
+                    draws += 1.0;
+                    break;
+                }
+                let new_hash = board.get_hash();
+                if !board_hashes.insert(new_hash){
+                    println!("Back to a previous board, break game to avoid loops, consider it a draw");
                     draws += 1.0;
                     break;
                 }
