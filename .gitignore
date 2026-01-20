@@ -27,3 +27,6 @@ target
 
 # Ignore build artifacts in the "dist" directory
 dist
+
+# ignore MacOS specific files
+.DS_Store
