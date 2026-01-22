@@ -61,3 +61,10 @@ where B: AutodiffBackend {
 
     to_feed
 }
+
+pub fn add_symmetries<B>(input:Tensor<B, 4>, target: PolicyValueTarget<B>, illegal_mask: Tensor<B, 4>) -> Vec<(Tensor<B, 4>, PolicyValueTarget<B>, Tensor<B, 4>)>
+where B: AutodiffBackend {
+    let mut with_symmetries = vec![(input, target, illegal_mask)];
+    // WIP
+    with_symmetries
+}

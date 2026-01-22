@@ -50,6 +50,83 @@ pub enum Direction {
     DownRight
 }
 
+impl Direction {
+    pub fn flip(&self, horizontal: bool, vertical: bool) -> &Self {
+        let mut after_horizontal_flip = self;
+        if horizontal {
+            match &self {
+                    Direction::Up => after_horizontal_flip = &Direction::Down,
+                    Direction::UpRight => after_horizontal_flip = &Direction::DownRight,
+                    Direction::Right => after_horizontal_flip = &Direction::Right,
+                    Direction::DownRight => after_horizontal_flip = &Direction::UpRight,
+                    Direction::Down => after_horizontal_flip = &Direction::Up,
+                    Direction::DownLeft => after_horizontal_flip = &Direction::UpLeft,
+                    Direction::Left => after_horizontal_flip = &Direction::Left,
+                    Direction::UpLeft => after_horizontal_flip = &Direction::DownLeft,
+            }
+        }
+        let mut after_vertical_flip = after_horizontal_flip;
+        if vertical {
+            match after_horizontal_flip {
+                    Direction::Up => after_vertical_flip = &Direction::Up,
+                    Direction::UpRight => after_vertical_flip = &Direction::UpLeft,
+                    Direction::Right => after_vertical_flip = &Direction::Left,
+                    Direction::DownRight => after_vertical_flip = &Direction::DownLeft,
+                    Direction::Down => after_vertical_flip = &Direction::Down,
+                    Direction::DownLeft => after_vertical_flip = &Direction::DownRight,
+                    Direction::Left => after_vertical_flip = &Direction::Right,
+                    Direction::UpLeft => after_vertical_flip = &Direction::UpRight,
+            }
+        }
+        after_vertical_flip
+    }
+
+    pub fn rotate_clockwise(&self, quarter_turns: i32) -> &Self {
+        let resulting_direction;
+        match quarter_turns.rem_euclid(4) {
+            0 => resulting_direction = self,
+            1 => {
+                match &self {
+                    Direction::Up => resulting_direction = &Direction::Right,
+                    Direction::UpRight => resulting_direction = &Direction::DownRight,
+                    Direction::Right => resulting_direction = &Direction::Down,
+                    Direction::DownRight => resulting_direction = &Direction::DownLeft,
+                    Direction::Down => resulting_direction = &Direction::Left,
+                    Direction::DownLeft => resulting_direction = &Direction::UpLeft,
+                    Direction::Left => resulting_direction = &Direction::Up,
+                    Direction::UpLeft => resulting_direction = &Direction::UpRight,
+                }
+            }
+            2 => {
+                match &self {
+                    Direction::Up => resulting_direction = &Direction::Down,
+                    Direction::UpRight => resulting_direction = &Direction::DownLeft,
+                    Direction::Right => resulting_direction = &Direction::Left,
+                    Direction::DownRight => resulting_direction = &Direction::UpLeft,
+                    Direction::Down => resulting_direction = &Direction::Up,
+                    Direction::DownLeft => resulting_direction = &Direction::UpRight,
+                    Direction::Left => resulting_direction = &Direction::Right,
+                    Direction::UpLeft => resulting_direction = &Direction::DownRight,
+                }
+            }
+            3 => {
+                match &self {
+                    Direction::Up => resulting_direction = &Direction::Left,
+                    Direction::UpRight => resulting_direction = &Direction::UpLeft,
+                    Direction::Right => resulting_direction = &Direction::Up,
+                    Direction::DownRight => resulting_direction = &Direction::UpRight,
+                    Direction::Down => resulting_direction = &Direction::Right,
+                    Direction::DownLeft => resulting_direction = &Direction::DownRight,
+                    Direction::Left => resulting_direction = &Direction::Down,
+                    Direction::UpLeft => resulting_direction = &Direction::DownLeft,
+                }
+            }
+            _ => unreachable!(),
+        }
+    resulting_direction
+    }
+}
+
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
 pub struct Position {
     pub row: u8,
