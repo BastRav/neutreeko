@@ -133,7 +133,7 @@ pub struct Position {
     pub column: u8,
 }
 
-pub fn aligned_positions(positions: &mut Vec<Position>) -> bool {
+fn aligned_positions(positions: &mut Vec<Position>) -> bool {
     if positions.len() != 3 {
         panic!("aligned_positions function requires exactly 3 positions");
     }
@@ -248,7 +248,7 @@ impl Board {
         None
     }
 
-    pub fn move_pawn(&mut self, pawn_index: usize, row_increment: i32, column_increment: i32) -> bool {
+    fn move_pawn(&mut self, pawn_index: usize, row_increment: i32, column_increment: i32) -> bool {
         let init_position = self.pawns[pawn_index].position.clone();
         
         let final_row = i32::from(init_position.row) + row_increment;

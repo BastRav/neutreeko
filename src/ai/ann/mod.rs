@@ -1,5 +1,5 @@
 mod block;
-pub mod utils;
+mod utils;
 #[cfg(feature = "train")]
 pub mod train;
 
@@ -23,9 +23,9 @@ use burn_store::{ModuleSnapshot, BurnpackStore};
 
 use block::{ResidualBlock, ValueHead, PolicyHead};
 
-pub struct PolicyValueOutput<B: Backend> {
-    pub value: Tensor<B, 2>,
-    pub policy: Tensor<B, 4>,
+struct PolicyValueOutput<B: Backend> {
+    value: Tensor<B, 2>,
+    policy: Tensor<B, 4>,
 }
 
 #[derive(Module, Debug)]
@@ -40,7 +40,7 @@ pub struct ANN<B: Backend> {
 }
 
 impl<B: Backend> ANN<B> {
-    pub fn forward(&self, input: Tensor<B, 4>) -> PolicyValueOutput<B> {
+    fn forward(&self, input: Tensor<B, 4>) -> PolicyValueOutput<B> {
         // First block
         let out = self.conv1.forward(input);
         //info!("After conv1 shape: {:?}", out.shape());
@@ -72,11 +72,11 @@ impl<B: Backend> ANN<B> {
 
 #[derive(Config, Debug)]
 pub struct ANNConfig {
-    pub channels: usize,
+    channels: usize,
 }
 
 impl ANNConfig {
-    pub fn init<B: Backend>(channels: usize, device: &Device<B>) -> ANN<B> {
+    fn init<B: Backend>(channels: usize, device: &Device<B>) -> ANN<B> {
         let conv1 = Conv2dConfig::new([2, channels], [7, 7])
             .with_stride([2, 2])
             .with_padding(PaddingConfig2d::Explicit(3, 3))

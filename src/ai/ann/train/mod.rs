@@ -21,18 +21,18 @@ use crate::{
 };
 
 #[derive(Clone)]
-pub struct PolicyValueTarget<B: AutodiffBackend> {
-    pub value: Tensor<B, 2>,
-    pub policy: Tensor<B, 4>,
+struct PolicyValueTarget<B: AutodiffBackend> {
+    value: Tensor<B, 2>,
+    policy: Tensor<B, 4>,
 }
 
 pub struct ANNTrainer<B: AutodiffBackend, A: AI<NativePlatform>> {
-    pub alphazeutreeko: AlphaZeutreeko<B, NativePlatform>,
+    alphazeutreeko: AlphaZeutreeko<B, NativePlatform>,
     pub opponent: Option<A>,
-    pub optimizer: OptimizerAdaptor<Adam, ANN<B>, B>,
-    pub learning_rate_schedule: CosineAnnealingLrScheduler,
-    pub device: Device<B>,
-    pub recorder: BinFileRecorder<FullPrecisionSettings>,
+    optimizer: OptimizerAdaptor<Adam, ANN<B>, B>,
+    learning_rate_schedule: CosineAnnealingLrScheduler,
+    device: Device<B>,
+    recorder: BinFileRecorder<FullPrecisionSettings>,
 }
 
 impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A> {
@@ -84,7 +84,7 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
         let has_opponent = self.opponent.is_some();
         for epoch in 1..=max_epoch {
             println!("Starting iteration {}", epoch);
-            self.alphazeutreeko.graph.clear();
+            self.alphazeutreeko.clear_graph();
             let mut to_feed = vec![];
             let mut board = Board::default_new();
             let mut board_hashes = HashSet::new();
@@ -168,7 +168,7 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
         Ok(())
     }
 
-     pub fn save_for_web(&self) {
+    pub fn save_for_web(&self) {
         let mut store = BurnpackStore::from_file("assets/models/web/model");
         let _ = self.alphazeutreeko.policy.ann.save_into(&mut store);
     }

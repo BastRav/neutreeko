@@ -13,18 +13,18 @@ use petgraph::prelude::NodeIndex;
 
 
 #[derive(Clone)]
-pub struct MCTSNode {
-    pub board_hash: u64,
-    pub board: Board,
-    pub color: Color,
-    pub visits: usize,
-    pub wins: f32,
-    pub untried_actions: Vec<(f32, usize, Direction, Board)>,
-    pub board_eval: f32,
+struct MCTSNode {
+    board_hash: u64,
+    board: Board,
+    color: Color,
+    visits: usize,
+    wins: f32,
+    untried_actions: Vec<(f32, usize, Direction, Board)>,
+    board_eval: f32,
 }
 
 impl MCTSNode {
-    pub fn new(board: Board, color: Color, untried_actions: Vec<(f32, usize, Direction, Board)>, board_eval: f32) -> Self {
+    fn new(board: Board, color: Color, untried_actions: Vec<(f32, usize, Direction, Board)>, board_eval: f32) -> Self {
         Self {
             board_hash: board.get_hash(),
             board,
@@ -36,11 +36,11 @@ impl MCTSNode {
         }
     }
 
-    pub fn is_terminal(&self) -> bool {
+    fn is_terminal(&self) -> bool {
         self.board.winner().is_some()
     }
 
-    pub fn is_fully_expanded(&self) -> bool {
+    fn is_fully_expanded(&self) -> bool {
         self.untried_actions.len() == 0
     }
 }
@@ -55,15 +55,19 @@ pub trait Policy: Clone {
 
 #[derive(Clone)]
 pub struct MCTSGeneric<P: Policy, O: Platform> {
-    pub color: Color,
-    pub time_allowed_ms: f64,
-    pub graph: Graph<MCTSNode, (f32, usize, Direction)>,
+    color: Color,
+    time_allowed_ms: f64,
+    graph: Graph<MCTSNode, (f32, usize, Direction)>,
     pub policy: P,
-    pub platform: PhantomData<O>,
+    platform: PhantomData<O>,
 }
 
 impl<P: Policy, O: Platform> MCTSGeneric<P, O> {
-    pub fn iterate(&mut self, origin: NodeIndex) {
+    pub fn clear_graph(&mut self) {
+        self.graph.clear();
+    }
+
+    fn iterate(&mut self, origin: NodeIndex) {
         let mut node_index = origin;
         let mut node = self.graph.node_weight(node_index).unwrap();
         while !node.is_terminal() && node.is_fully_expanded() {
@@ -78,7 +82,7 @@ impl<P: Policy, O: Platform> MCTSGeneric<P, O> {
         self.backpropagate(node_index, winner);
     }
 
-    pub fn expand(&mut self, node_index: NodeIndex) -> NodeIndex{
+    fn expand(&mut self, node_index: NodeIndex) -> NodeIndex {
         let node = self.graph.node_weight_mut(node_index).unwrap();
         let action = node.untried_actions.pop().unwrap();
         let child_color = node.color.other_color();
@@ -88,7 +92,7 @@ impl<P: Policy, O: Platform> MCTSGeneric<P, O> {
         child
     }
 
-    pub fn random_rollout(&self, node: &MCTSNode) -> f32 {
+    fn random_rollout(&self, node: &MCTSNode) -> f32 {
         let mut current_board = node.board.clone();
         let player_color = node.color.clone();
         while current_board.next_player.is_some() {
@@ -103,7 +107,7 @@ impl<P: Policy, O: Platform> MCTSGeneric<P, O> {
         }
     }
 
-    pub fn rollout(&self, node_index: NodeIndex) -> f32 {
+    fn rollout(&self, node_index: NodeIndex) -> f32 {
         let node = self.graph.node_weight(node_index).unwrap();
         match node.board.winner() {
             Some(color) => {
@@ -120,7 +124,7 @@ impl<P: Policy, O: Platform> MCTSGeneric<P, O> {
         }
     }
 
-    pub fn backpropagate(&mut self, node_index:NodeIndex, winner:f32) {
+    fn backpropagate(&mut self, node_index:NodeIndex, winner:f32) {
         let mut current_node_index = node_index;
         let mut to_add = winner;
         loop {
@@ -135,7 +139,7 @@ impl<P: Policy, O: Platform> MCTSGeneric<P, O> {
         }
     }
 
-    pub fn best_child(&mut self, node_index: NodeIndex) -> NodeIndex {
+    fn best_child(&mut self, node_index: NodeIndex) -> NodeIndex {
         let mut best_score = 0.0;
         let mut best_child = self.graph.edges_directed(node_index, petgraph::Direction::Outgoing).next().unwrap().target();
         let parent_visits = self.graph.node_weight(node_index).unwrap().visits as f32;
@@ -160,7 +164,7 @@ impl<P: Policy, O: Platform> MCTSGeneric<P, O> {
         best_child
     }
 
-    pub fn choose_final_move_give_all_options(&self, origin: NodeIndex) -> (f32, Vec<(f32, usize, Direction)>) {
+    fn choose_final_move_give_all_options(&self, origin: NodeIndex) -> (f32, Vec<(f32, usize, Direction)>) {
         let origin_node = self.graph.node_weight(origin).unwrap();
         let mut moves_found = vec![];
         let mut total_visits = 0.0;
@@ -218,8 +222,7 @@ impl<P: Policy, O: Platform> AI<O> for MCTSGeneric<P, O> {
         }
         let board_hash = board.get_hash();
         let possible_origin = self.graph.node_indices().find(|index| {
-            let node = self.graph.node_weight(*index).unwrap();
-            let index_hash = node.board.get_hash();
+            let index_hash = self.graph.node_weight(*index).unwrap().board_hash;
             board_hash == index_hash
         });
         let origin = possible_origin.unwrap_or_else(|| {

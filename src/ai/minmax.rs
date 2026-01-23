@@ -12,15 +12,15 @@ use petgraph::visit::EdgeRef;
 use petgraph::prelude::NodeIndex;
 
 #[derive(Clone)]
-pub struct BoardEvaluation {
-    pub board: Board,
-    pub color: Color,
-    pub score: usize,
-    pub depth: usize,
+struct BoardEvaluation {
+    board: Board,
+    color: Color,
+    score: usize,
+    depth: usize,
 }
 
 impl BoardEvaluation {
-    pub fn new(board: Board, color: Color, depth: usize) -> Self {
+    fn new(board: Board, color: Color, depth: usize) -> Self {
         let mut a = Self { board: board, color: color, score: 0, depth: depth};
         a.score_board();
         a
@@ -37,10 +37,10 @@ impl BoardEvaluation {
 
 #[derive(Clone)]
 pub struct MinMax<O: Platform> {
-    pub color: Color,
-    pub depth: usize,
-    pub graph: Graph<BoardEvaluation, (usize, Direction)>,
-    pub _platform: PhantomData<O>,
+    color: Color,
+    depth: usize,
+    graph: Graph<BoardEvaluation, (usize, Direction)>,
+    _platform: PhantomData<O>,
 }
 
 impl <O: Platform> MinMax<O> {

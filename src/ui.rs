@@ -25,7 +25,7 @@ pub enum Msg {
     SetAiType(usize),
 }
 
-pub enum AiType {
+enum AiType {
     None,
     MinMax(Color),
     MCTS(Color),
@@ -44,7 +44,7 @@ pub struct App {
 }
 
 impl App {
-    pub fn create_ai(&mut self, color:Color) {
+    fn create_ai(&mut self, color:Color) {
         if self.ai_type_selected == 0 {
             ()
         } else if self.ai_type_selected == 1 {
@@ -65,7 +65,7 @@ impl App {
 }
 
 #[derive(Clone, PartialEq)]
-pub struct AppState {
+struct AppState {
     pawn_clicked: Callback<usize>,
     direction_clicked: Callback<Direction>,
 }
@@ -350,20 +350,20 @@ impl App {
     }
 }
 
-pub struct PawnView{
+struct PawnView{
     state: Rc<AppState>,
     _listener: ContextHandle<Rc<AppState>>
 }
 
 #[derive(Clone, Properties, PartialEq)]
-pub struct PawnComponent {
-    pub pawn: Pawn,
-    pub position: Position,
-    pub index: usize,
-    pub selected: bool,
+struct PawnComponent {
+    pawn: Pawn,
+    position: Position,
+    index: usize,
+    selected: bool,
 }
 
-pub enum PawnMsg {
+enum PawnMsg {
     ContextChanged(Rc<AppState>),
 }
 
@@ -422,12 +422,12 @@ impl Component for PawnView {
     }
 }
 
-pub struct BoardView;
+struct BoardView;
 
 #[derive(Clone, Properties, PartialEq)]
-pub struct BoardComponent {
-    pub board: Board,
-    pub selected_pawn: Option<usize>,
+struct BoardComponent {
+    board: Board,
+    selected_pawn: Option<usize>,
 }
  
 impl Component for BoardView {
