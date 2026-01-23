@@ -161,10 +161,9 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
 
     pub fn evaluate(&mut self) {
         let opponent = self.opponent.as_mut().unwrap();
-        let mut victories = 0;
-        let mut draws = 0;
-        for epoch in 1..=100 {
-            println!("Starting iteration {}", epoch);
+        let mut victories = 0.0;
+        let mut draws = 0.0;
+        for epoch in 1..=20 {
             self.alphazeutreeko.clear_graph();
             let mut board = Board::default_new();
             let mut number_moves = 0;
@@ -175,12 +174,10 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
                 let possible_moves;
                 let best_move;
                 if board.next_player == Some(alphazeutreeko_color.clone()) {
-                    println!("AlphaZeutreeko is playing");
-                    possible_moves = self.alphazeutreeko.give_all_options(&board, true);
+                    possible_moves = self.alphazeutreeko.give_all_options(&board, false);
                     best_move = self.alphazeutreeko.best_move_from_vec(&possible_moves.1, false);
                 }
                 else {
-                    println!("Opponent is playing");
                     possible_moves = opponent.give_all_options(&board, false);
                     best_move = opponent.best_move_from_vec(&possible_moves.1, false);
                 }
@@ -190,23 +187,18 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
                 }
                 number_moves += 1;
                 if number_moves > 255 {
-                    println!("Game taking too long, consider it a draw");
-                    draws += 1;
+                    draws += 1.0;
                     break;
                 }
             }
             let alphazeutreeko_color = self.alphazeutreeko.color().clone();
             if board.winner() == Some(alphazeutreeko_color.clone()) {
-                victories += 1;
-                println!("AlphaZeutreeko won!!!");
+                victories += 1.0;
             }
-            println!("Final board");
-            println!("{}", board.str_rep());
-            
             self.alphazeutreeko.set_color(alphazeutreeko_color.other_color());
             opponent.set_color(alphazeutreeko_color);
         }
-        println!("Victories: {}%, Draws: {}%", victories, draws);
+        println!("Victories: {:.1}%, Draws: {:.1}%", 5.0 * victories, 5.0 * draws);
     }
 
     pub fn save(&self, filepath: &str) -> Result<(), Box<dyn std::error::Error>> {

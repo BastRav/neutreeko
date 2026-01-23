@@ -11,6 +11,11 @@ use burn::backend::{Autodiff, NdArray};
 
 #[cfg(feature = "train")]
 fn main() {
+    //train();
+    evaluate();
+}
+
+fn train() {
     let mut trainer: ANNTrainer<Autodiff<NdArray<f32>>, MinMax<NativePlatform>> = ANNTrainer::new();
     //let _ = trainer.load("assets/models/3_100_MinMax6");
 
@@ -35,4 +40,21 @@ fn main() {
     trainer.train_opening(1);
     let _ = trainer.save("assets/models/6_1_opening");
     trainer.save_for_web();
+}
+
+fn evaluate(){
+    let mut trainer: ANNTrainer<Autodiff<NdArray<f32>>, MinMax<NativePlatform>> = ANNTrainer::new();
+    trainer.opponent = Some(MinMax::new(Color::Yellow, 4));
+    let _ = trainer.load("assets/models/1_1_opening");
+    trainer.evaluate();
+    let _ = trainer.load("assets/models/2_100_MinMax4");
+    trainer.evaluate();
+    let _ = trainer.load("assets/models/3_100_MinMax6");
+    trainer.evaluate();
+    let _ = trainer.load("assets/models/4_100_MinMax6");
+    trainer.evaluate();
+    let _ = trainer.load("assets/models/5_100_itself");
+    trainer.evaluate();
+    let _ = trainer.load("assets/models/6_1_opening");
+    trainer.evaluate();
 }
