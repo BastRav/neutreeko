@@ -159,6 +159,56 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
         }
     }
 
+    pub fn evaluate(&mut self) {
+        let opponent = self.opponent.as_mut().unwrap();
+        let mut victories = 0;
+        let mut draws = 0;
+        for epoch in 1..=100 {
+            println!("Starting iteration {}", epoch);
+            self.alphazeutreeko.clear_graph();
+            let mut board = Board::default_new();
+            let mut number_moves = 0;
+            while board.winner().is_none() {
+                let alphazeutreeko_color = self.alphazeutreeko.color();
+                println!("Current board");
+                println!("{}", board.str_rep());
+                let possible_moves;
+                let best_move;
+                if board.next_player == Some(alphazeutreeko_color.clone()) {
+                    println!("AlphaZeutreeko is playing");
+                    possible_moves = self.alphazeutreeko.give_all_options(&board, true);
+                    best_move = self.alphazeutreeko.best_move_from_vec(&possible_moves.1, false);
+                }
+                else {
+                    println!("Opponent is playing");
+                    possible_moves = opponent.give_all_options(&board, false);
+                    best_move = opponent.best_move_from_vec(&possible_moves.1, false);
+                }
+                let moved = board.move_pawn_until_blocked(best_move.0, &best_move.1);
+                if !moved {
+                    panic!("An invalid move was selected!!!");
+                }
+                number_moves += 1;
+                if number_moves > 255 {
+                    println!("Game taking too long, consider it a draw");
+                    draws += 1;
+                    break;
+                }
+            }
+            let alphazeutreeko_color = self.alphazeutreeko.color().clone();
+            if board.winner() == Some(alphazeutreeko_color.clone()) {
+                victories += 1;
+                println!("AlphaZeutreeko won!!!");
+            }
+            println!("Final board");
+            println!("{}", board.str_rep());
+            
+            self.alphazeutreeko.set_color(alphazeutreeko_color.other_color());
+            opponent.set_color(alphazeutreeko_color);
+        }
+        println!("Victories: {}%, Draws: {}%", victories, draws);
+    }
+
     pub fn save(&self, filepath: &str) -> Result<(), Box<dyn std::error::Error>> {
         self.alphazeutreeko.policy.ann.clone().save_file(filepath, &self.recorder)?;
         Ok(())
