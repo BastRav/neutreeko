@@ -35,28 +35,36 @@ pub struct ANN<B: Backend> {
     relu: Relu,
     layer1: ResidualBlock<B>,
     layer2: ResidualBlock<B>,
+    layer3: ResidualBlock<B>,
+    layer4: ResidualBlock<B>,
     value_head: ValueHead<B>,
     policy_head: PolicyHead<B>,
 }
 
 impl<B: Backend> ANN<B> {
     fn forward(&self, input: Tensor<B, 4>) -> PolicyValueOutput<B> {
+        // Input shape: [1, 2, 5, 5]
+
+        // Subsequent blocks assume 32 channels
+        
         // First block
-        let out = self.conv1.forward(input);
+        let out = self.conv1.forward(input); // [1, 32, 5, 5]
         //info!("After conv1 shape: {:?}", out.shape());
-        let out = self.bn1.forward(out);
+        let out = self.bn1.forward(out); // [1, 32, 5, 5]
         //info!("After bn1 shape: {:?}", out.shape());
-        let out = self.relu.forward(out);
+        let out = self.relu.forward(out); // [1, 32, 5, 5]
         //info!("After first block shape: {:?}", out.shape());
 
         // Residual blocks
-        let out = self.layer1.forward(out);
-        let out = self.layer2.forward(out);
+        let out = self.layer1.forward(out); // [1, 32, 5, 5]
+        let out = self.layer2.forward(out); // [1, 32, 5, 5]
+        let out = self.layer3.forward(out); // [1, 32, 5, 5]
+        let out = self.layer4.forward(out); // [1, 32, 5, 5]
         let out_copy = out.clone();
         //info!("After residual blocks shape: {:?}", out.shape());
 
-        let value = self.value_head.forward(out);
-        let policy = self.policy_head.forward(out_copy);
+        let value = self.value_head.forward(out); // [1, 1]
+        let policy = self.policy_head.forward(out_copy); // [1, 8, 5, 5]
         PolicyValueOutput { value, policy }
     }
 
@@ -77,9 +85,9 @@ pub struct ANNConfig {
 
 impl ANNConfig {
     fn init<B: Backend>(channels: usize, device: &Device<B>) -> ANN<B> {
-        let conv1 = Conv2dConfig::new([2, channels], [7, 7])
-            .with_stride([2, 2])
-            .with_padding(PaddingConfig2d::Explicit(3, 3))
+        let conv1 = Conv2dConfig::new([2, channels], [3, 3])
+            .with_stride([1, 1])
+            .with_padding(PaddingConfig2d::Same)
             .with_bias(false)
             .init(device);
         let bn1 = BatchNormConfig::new(channels).init(device);
@@ -88,6 +96,8 @@ impl ANNConfig {
         // Residual blocks
         let layer1 = ResidualBlock::new(channels, device);
         let layer2 = ResidualBlock::new(channels, device);
+        let layer3 = ResidualBlock::new(channels, device);
+        let layer4 = ResidualBlock::new(channels, device);
 
         let value_head = ValueHead::new(channels, device);
         let policy_head = PolicyHead::new(channels, device);
@@ -98,6 +108,8 @@ impl ANNConfig {
             relu,
             layer1,
             layer2,
+            layer3,
+            layer4,
             value_head,
             policy_head,
         }

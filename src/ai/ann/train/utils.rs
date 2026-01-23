@@ -48,7 +48,7 @@ impl<B: AutodiffBackend> PolicyValueTarget<B> {
 pub fn illegal_mask<B>(board: &Board, device: &Device<B>) -> Tensor<B, 4>
 where B:Backend {
     let possible_moves = board.get_all_valid_directions_and_resulting_boards();
-    let mut illegal_mask_array = [[[[-1e9; 1]; 8]; 5]; 5];
+    let mut illegal_mask_array = [[[[-1e9; 5]; 5]; 8]; 1];
     for (pawn_index, direction, _) in possible_moves.into_iter() {
         let pawn_position = &board.pawns[pawn_index].position;
         illegal_mask_array[0][direction as usize][pawn_position.row as usize][pawn_position.column as usize] = 0.0;
@@ -59,7 +59,7 @@ where B:Backend {
 pub fn moves_and_value_to_target<B>(board: &Board, board_eval: f32, moves_eval: &Vec<(f32, usize, Direction)>, device: &Device<B>) -> PolicyValueTarget<B>
 where B: AutodiffBackend {
     let value = Tensor::from_floats([[board_eval]], device);
-    let mut policy_floats = [[[[0.0; 1]; 8]; 5]; 5];
+    let mut policy_floats = [[[[0.0; 5]; 5]; 8]; 1];
     for (proba, pawn_index, direction) in moves_eval.iter() {
         let pawn_position = &board.pawns[*pawn_index].position;
         policy_floats[0][direction.clone() as usize][pawn_position.row as usize][pawn_position.column as usize] = *proba;

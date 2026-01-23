@@ -7,7 +7,7 @@ use burn::tensor::{backend::Backend, Device, Tensor};
 pub fn board_to_input<B>(board: &Board, device: &Device<B>) -> Tensor<B, 4>
 where B: Backend {
     // 2 channels: current player pawns, opponent pawns
-    let mut input = [[[[0.0; 1]; 5]; 5]; 2];
+    let mut input = [[[[0.0; 5]; 5]; 2]; 1];
 
     for pawn in board.pawns.iter() {
         let channel = if Some(pawn.color.clone()) == board.next_player { 0 } else { 1 };
