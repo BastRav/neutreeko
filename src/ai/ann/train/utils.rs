@@ -7,8 +7,9 @@ use crate::{
     },
     logic::{Board, Direction},
 };
+use strum::IntoEnumIterator;
 
-use burn::tensor::{backend::{Backend, AutodiffBackend}, Device, Tensor};
+use burn::tensor::{backend::{Backend, AutodiffBackend}, Device, Tensor, s};
 
 pub fn illegal_mask<B>(board: &Board, device: &Device<B>) -> Tensor<B, 4>
 where B:Backend {
@@ -67,4 +68,25 @@ where B: AutodiffBackend {
     let mut with_symmetries = vec![(input, target, illegal_mask)];
     // WIP
     with_symmetries
+}
+
+fn rotate_clockwise<B>(input: Tensor<B, 4>, quarter_turns: i32) -> Tensor<B, 4>
+where B: AutodiffBackend {
+    let mut output = input.clone(); 
+    for _ in 0..quarter_turns.rem_euclid(4) {
+        output = rotate_clockwise_once(output);
+    }
+    output
+}
+
+fn rotate_clockwise_once<B>(input: Tensor<B, 4>) -> Tensor<B, 4>
+where B: AutodiffBackend {
+    let rotated = input.flip([2, 3]).transpose();
+    let directions_out: Vec<i32> = Direction::iter().map(|d| d.rotate_clockwise(1).clone() as i32).collect();
+    let mut output = Tensor::zeros(rotated.shape(), &rotated.device());
+    for (new_idx, &old_idx) in directions_out.iter().enumerate() {
+        let src_slice = rotated.clone().slice(s![.., old_idx, .., ..]);
+        output = output.slice_assign(s![.., new_idx, .., ..], src_slice);
+    }
+    output
 }

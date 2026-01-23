@@ -40,14 +40,14 @@ pub struct Board {
 
 #[derive(EnumIter, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Direction {
-    Up,
-    Down,
-    Left,
-    Right,
-    UpLeft,
-    UpRight,
-    DownLeft,
-    DownRight
+    Up = 0,
+    Down = 1,
+    Left = 2,
+    Right = 3,
+    UpLeft = 4,
+    UpRight = 5,
+    DownLeft = 6,
+    DownRight = 7,
 }
 
 impl Direction {
@@ -124,6 +124,18 @@ impl Direction {
             _ => unreachable!(),
         }
     resulting_direction
+    }
+
+    pub fn flip_diagonal(&self, upleft_downright_diag: bool, upright_downleft_diag: bool) -> &Self {
+        let mut after_upleft_flip = self;
+        if upleft_downright_diag {
+            after_upleft_flip = after_upleft_flip.rotate_clockwise(1).flip(false, true);
+        }
+        let mut after_upright_flip = after_upleft_flip;
+        if upright_downleft_diag {
+            after_upright_flip = after_upright_flip.rotate_clockwise(1).flip(true, false);
+        }
+        after_upright_flip
     }
 }
 
