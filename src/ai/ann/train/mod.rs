@@ -91,7 +91,7 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
             board_hashes.insert(board.get_hash());
             let mut number_moves = 0;
             while board.winner().is_none() {
-                let alphazeutreeko_color = self.alphazeutreeko.color().clone();
+                let alphazeutreeko_color = self.alphazeutreeko.color();
                 println!("Current board");
                 println!("{}", board.str_rep());
                 let possible_moves;
@@ -113,7 +113,7 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
                     best_move = self.opponent.as_mut().unwrap().best_move_from_vec(&possible_moves.1, false);
                 }
                 
-                to_feed.push((board.clone(), possible_moves.clone()));
+                to_feed.push((board.clone(), possible_moves));
                 let moved = board.move_pawn_until_blocked(best_move.0, &best_move.1);
                 if !moved {
                     panic!("An invalid move was selected!!!");

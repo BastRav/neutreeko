@@ -23,11 +23,11 @@ where B: Backend {
     let tensor_data: Vec<f32> = tensor.to_data().into_vec().unwrap();
 
     let mut possible_moves_proba = vec![];
-    for (pawn_index, direction, board) in possible_moves.iter() {
-        let pawn_position = board.pawns[*pawn_index].position.clone();
+    for (pawn_index, direction, board) in possible_moves.into_iter() {
+        let pawn_position = &board.pawns[pawn_index].position;
         let index = (direction.clone() as usize) * 25 + (pawn_position.row as usize) * 5 + pawn_position.column as usize;
         let proba: f32 = tensor_data[index];
-        possible_moves_proba.push((proba, *pawn_index, direction.clone(), board.clone()));
+        possible_moves_proba.push((proba, pawn_index, direction, board));
     }
     // Softmax normalisation
     let max_proba = possible_moves_proba.iter().map(|x| x.0).fold(f32::MIN, f32::max);

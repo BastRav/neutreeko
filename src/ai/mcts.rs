@@ -111,7 +111,7 @@ impl<P: Policy, O: Platform> MCTSGeneric<P, O> {
         let node = self.graph.node_weight(node_index).unwrap();
         match node.board.winner() {
             Some(color) => {
-                if color == node.color.clone() {1.0} else {0.0}
+                if &color == &node.color {1.0} else {0.0}
             }
             None => {
                 if P::IS_TRIVIAL {
@@ -216,8 +216,8 @@ impl<P: Policy, O: Platform> AI<O> for MCTSGeneric<P, O> {
         let first_prediction = self.policy.predict(board);
         if verbose {
             O::print(&format!("Policy gives board eval {}", first_prediction.0));
-            for element in first_prediction.1.clone().into_iter() {
-                O::print(&format!("Policy gives eval {} to move {:?}", element.0, (element.1, element.2)));
+            for element in first_prediction.1.iter() {
+                O::print(&format!("Policy gives eval {} to move {:?}", element.0, (element.1, element.2.clone())));
             }
         }
         let board_hash = board.get_hash();

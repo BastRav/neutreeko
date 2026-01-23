@@ -89,7 +89,7 @@ impl <O: Platform> AI<O> for MinMax<O> {
         &self.color
     }
 
-    fn set_color(&mut self, color:Color){
+    fn set_color(&mut self, color: Color){
         self.color = color;
     }
 
@@ -99,9 +99,9 @@ impl <O: Platform> AI<O> for MinMax<O> {
         let mut to_explore = vec![origin];
         for current_depth in 0..self.depth {
             let color_at_this_depth = if current_depth % 2 == 0 {
-                self.color.clone()
+                &self.color
             } else {
-                self.color.other_color()
+                &self.color.other_color()
             };
             let mut to_explore_next = Vec::new();
             for considered_node_index in to_explore.iter() {
@@ -110,13 +110,13 @@ impl <O: Platform> AI<O> for MinMax<O> {
                     continue;
                 }
                 for (pawn_index, pawn) in considered_board.pawns.iter().enumerate() {
-                    if pawn.color != color_at_this_depth {
+                    if &pawn.color != color_at_this_depth {
                         continue;
                     }
                     let directions = considered_board.get_valid_directions_and_resulting_boards(pawn_index);
                     for (direction, new_board) in directions {
-                        let new_node_index = self.graph.add_node(BoardEvaluation::new(new_board.clone(), self.color.clone(), current_depth + 1));
-                        self.graph.add_edge(*considered_node_index, new_node_index, (pawn_index, direction.clone()));
+                        let new_node_index = self.graph.add_node(BoardEvaluation::new(new_board, self.color.clone(), current_depth + 1));
+                        self.graph.add_edge(*considered_node_index, new_node_index, (pawn_index, direction));
                         to_explore_next.push(new_node_index);
                     }
                 }

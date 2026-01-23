@@ -145,16 +145,17 @@ pub struct Position {
     pub column: u8,
 }
 
-fn aligned_positions(positions: &mut Vec<Position>) -> bool {
-    if positions.len() != 3 {
+fn aligned_positions(positions_in: &Vec<&Position>) -> bool {
+    if positions_in.len() != 3 {
         panic!("aligned_positions function requires exactly 3 positions");
     }
+    let mut positions = positions_in.clone();
 
     positions.sort_by(|a, b| a.row.cmp(&b.row));
 
-    let first_position = &positions[0];
-    let second_position = &positions[1];
-    let third_position = &positions[2];
+    let first_position = positions[0];
+    let second_position = positions[1];
+    let third_position = positions[2];
     let columns = vec![first_position.column as i8, second_position.column as i8, third_position.column as i8];
     let rows = vec![first_position.row as i8, second_position.row as i8, third_position.row as i8];
     let sorted_columns = {
@@ -225,12 +226,12 @@ impl Board {
     }
 
     fn is_valid(&self) -> bool {
-        let mut occupied_positions_values: HashSet<Position> = HashSet::new();
+        let mut occupied_positions_values = HashSet::new();
         for pawn in self.pawns.iter() {
             if pawn.position.row >= self.number_of_rows || pawn.position.column >= self.number_of_columns {
                 return false;
             }
-            if !occupied_positions_values.insert(pawn.position.clone()) {
+            if !occupied_positions_values.insert(&pawn.position) {
                 return false;
             }
         }
@@ -247,8 +248,8 @@ impl Board {
 
         for pawn in self.pawns.iter() {
             match pawn.color {
-                Color::Green => green_positions.push(pawn.position.clone()),
-                Color::Yellow => yellow_positions.push(pawn.position.clone()),
+                Color::Green => green_positions.push(&pawn.position),
+                Color::Yellow => yellow_positions.push(&pawn.position),
             }
         }
         if aligned_positions(&mut green_positions) {
@@ -338,7 +339,7 @@ impl Board {
     }
 
     pub fn get_valid_directions(&self, pawn_index: usize) -> Vec<Direction> {
-        let mut valid_directions = vec![];
+        let mut valid_directions = Vec::with_capacity(8);
         let directions = Direction::iter();
         for direction in directions {
             let mut new_board = self.clone();
