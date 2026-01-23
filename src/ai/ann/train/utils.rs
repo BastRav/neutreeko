@@ -70,24 +70,96 @@ where B: AutodiffBackend {
 
 pub fn opening<B>(device: &Device<B>) -> Vec<(Tensor<B, 4>, PolicyValueTarget<B>, Tensor<B, 4>)>
 where B: AutodiffBackend {
-    // first move
+    // initial board
     let mut board = Board::default_new();
     let mut opening_moves = vec![(0.5, 0, Direction::Right), (0.5, 1, Direction::Left)];
     let board_eval = 0.5;
-    let mut input = board_to_input(&board, device);
-    let mut target = moves_and_value_to_target(&board, board_eval, &opening_moves, device);
-    let mut illegal_m = illegal_mask(&board, device);
-    let mut to_feed = add_symmetries(input, target, illegal_m);
+    let mut to_feed = move_to_learning_input(&board, &opening_moves, board_eval, device);
 
-    // second move
+    // 1st move b1-c1
     board.move_pawn_until_blocked(0, &Direction::Right);
+    opening_moves = vec![(1.0, 3, Direction::Down)];
+    to_feed.append(&mut move_to_learning_input(&board, &opening_moves, board_eval, device));
+
+    // 2nd move c2-c3
+    board.move_pawn_until_blocked(3, &Direction::Down);
+    opening_moves = vec![(1.0, 0, Direction::DownLeft)];
+    to_feed.append(&mut move_to_learning_input(&board, &opening_moves, board_eval, device));
+
+    // 3rd move c1-a3
+    board.move_pawn_until_blocked(0, &Direction::DownLeft);
+    opening_moves = vec![(1.0, 4, Direction::Right)];
+    to_feed.append(&mut move_to_learning_input(&board, &opening_moves, board_eval, device));
+
+    // 4th move b5-c5
+    board.move_pawn_until_blocked(4, &Direction::Right);
+    opening_moves = vec![(1.0, 1, Direction::Down)];
+    to_feed.append(&mut move_to_learning_input(&board, &opening_moves, board_eval, device));
+
+    // 5th move d1-d4
+    board.move_pawn_until_blocked(1, &Direction::Down);
+    opening_moves = vec![(1.0, 4, Direction::UpLeft)];
+    to_feed.append(&mut move_to_learning_input(&board, &opening_moves, board_eval, device));
+
+    // 6th move c5-b4
+    board.move_pawn_until_blocked(4, &Direction::UpLeft);
+    opening_moves = vec![(1.0, 1, Direction::DownLeft)];
+    to_feed.append(&mut move_to_learning_input(&board, &opening_moves, board_eval, device));
+
+    // 7th move d4-c5
+    board.move_pawn_until_blocked(1, &Direction::DownLeft);
+    opening_moves = vec![(1.0, 5, Direction::Up)];
+    to_feed.append(&mut move_to_learning_input(&board, &opening_moves, board_eval, device));
+
+    // 8th move d5-d1
+    board.move_pawn_until_blocked(5, &Direction::Up);
+    opening_moves = vec![(1.0, 0, Direction::Down)];
+    to_feed.append(&mut move_to_learning_input(&board, &opening_moves, board_eval, device));
+
+    // 9th move a3-a5
+    board.move_pawn_until_blocked(0, &Direction::Down);
     opening_moves = vec![(1.0, 4, Direction::Down)];
-    input = board_to_input(&board, device);
-    target = moves_and_value_to_target(&board, board_eval, &opening_moves, device);
-    illegal_m = illegal_mask(&board, device);
-    to_feed.append(&mut add_symmetries(input, target, illegal_m));
+    to_feed.append(&mut move_to_learning_input(&board, &opening_moves, board_eval, device));
+
+    // 10th move b4-b5
+    board.move_pawn_until_blocked(4, &Direction::Down);
+    opening_moves = vec![(1.0, 1, Direction::UpLeft)];
+    to_feed.append(&mut move_to_learning_input(&board, &opening_moves, board_eval, device));
+
+    // 11th move c5-a3
+    board.move_pawn_until_blocked(1, &Direction::UpLeft);
+    opening_moves = vec![(1.0, 3, Direction::DownLeft)];
+    to_feed.append(&mut move_to_learning_input(&board, &opening_moves, board_eval, device));
+
+    // 12th move c3-b4
+    board.move_pawn_until_blocked(3, &Direction::DownLeft);
+    opening_moves = vec![(1.0, 2, Direction::UpLeft)];
+    to_feed.append(&mut move_to_learning_input(&board, &opening_moves, board_eval, device));
+
+    // 13th move c4-a2
+    board.move_pawn_until_blocked(2, &Direction::UpLeft);
+    opening_moves = vec![(1.0, 5, Direction::DownLeft)];
+    to_feed.append(&mut move_to_learning_input(&board, &opening_moves, board_eval, device));
+
+    // 14th move d1-a4
+    board.move_pawn_until_blocked(5, &Direction::DownLeft);
+    opening_moves = vec![(1.0, 2, Direction::DownRight)];
+    to_feed.append(&mut move_to_learning_input(&board, &opening_moves, board_eval, device));
+
+    // 15th move a2-d5
+    board.move_pawn_until_blocked(2, &Direction::DownRight);
+    opening_moves = vec![(0.2, 5, Direction::UpRight), (0.2, 3, Direction::Up), (0.2, 3, Direction::Right), (0.2, 3, Direction::DownRight), (0.2, 4, Direction::Right)];
+    to_feed.append(&mut move_to_learning_input(&board, &opening_moves, board_eval, device));
 
     to_feed
+}
+
+fn move_to_learning_input<B>(board: &Board, opening_moves: &Vec<(f32, usize, Direction)>, board_eval: f32, device:&Device<B>) -> Vec<(Tensor<B, 4>, PolicyValueTarget<B>, Tensor<B, 4>)>
+where B: AutodiffBackend {
+    let input = board_to_input(&board, device);
+    let target = moves_and_value_to_target(&board, board_eval, &opening_moves, device);
+    let illegal_m = illegal_mask(&board, device);
+    add_symmetries(input, target, illegal_m)
 }
 
 pub fn add_symmetries<B>(input:Tensor<B, 4>, target: PolicyValueTarget<B>, illegal_mask: Tensor<B, 4>) -> Vec<(Tensor<B, 4>, PolicyValueTarget<B>, Tensor<B, 4>)>
