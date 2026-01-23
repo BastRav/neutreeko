@@ -53,7 +53,7 @@ where B:Backend {
         let pawn_position = &board.pawns[pawn_index].position;
         illegal_mask_array[0][direction as usize][pawn_position.row as usize][pawn_position.column as usize] = 0.0;
     }
-    Tensor::from_data([illegal_mask_array], device)
+    Tensor::from_data(illegal_mask_array, device)
 }
 
 pub fn moves_and_value_to_target<B>(board: &Board, board_eval: f32, moves_eval: &Vec<(f32, usize, Direction)>, device: &Device<B>) -> PolicyValueTarget<B>
