@@ -14,8 +14,8 @@ fn main() {
     let mut trainer: ANNTrainer<Autodiff<NdArray<f32>>, MinMax<NativePlatform>> = ANNTrainer::new();
     //let _ = trainer.load("assets/models/3_100_MinMax6");
 
-    trainer.train_opening(10);
-    let _ = trainer.save("assets/models/1_10_opening");
+    trainer.train_opening(1);
+    let _ = trainer.save("assets/models/1_1_opening");
 
     trainer.opponent = Some(MinMax::new(Color::Yellow, 4));
     trainer.training_loop(100);
@@ -32,7 +32,7 @@ fn main() {
     trainer.training_loop(100);
     let _ = trainer.save("assets/models/5_100_itself");
 
-    trainer.train_opening(10);
-    let _ = trainer.save("assets/models/6_10_opening");
+    trainer.train_opening(1);
+    let _ = trainer.save("assets/models/6_1_opening");
     trainer.save_for_web();
 }

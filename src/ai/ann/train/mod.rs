@@ -32,8 +32,8 @@ pub struct ANNTrainer<B: AutodiffBackend, A: AI<NativePlatform>> {
 impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A> {
     pub fn new() -> Self {
         let device = B::Device::default();
-        let learning_rate_schedule = CosineAnnealingLrSchedulerConfig::new(5e-4, 1000).with_min_lr(5e-5).init().unwrap();
-        let optimizer = AdamConfig::new().with_weight_decay(Some(WeightDecayConfig::new(1e-4))).init();
+        let learning_rate_schedule = CosineAnnealingLrSchedulerConfig::new(1e-3, 10000).with_min_lr(5e-5).init().unwrap();
+        let optimizer = AdamConfig::new().with_weight_decay(Some(WeightDecayConfig::new(1e-3))).init();
         let alphazeutreeko = AlphaZeutreeko::new(Color::Green, 6);
         let opponent = None;
         let recorder = BinFileRecorder::<FullPrecisionSettings>::new();

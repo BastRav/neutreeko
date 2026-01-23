@@ -48,7 +48,7 @@ impl<B: AutodiffBackend> PolicyValueTarget<B> {
 pub fn illegal_mask<B>(board: &Board, device: &Device<B>) -> Tensor<B, 4>
 where B:Backend {
     let possible_moves = board.get_all_valid_directions_and_resulting_boards();
-    let mut illegal_mask_array = [[[[-1e6; 1]; 8]; 5]; 5];
+    let mut illegal_mask_array = [[[[-1e9; 1]; 8]; 5]; 5];
     for (pawn_index, direction, _) in possible_moves.into_iter() {
         let pawn_position = &board.pawns[pawn_index].position;
         illegal_mask_array[0][direction as usize][pawn_position.row as usize][pawn_position.column as usize] = 0.0;
