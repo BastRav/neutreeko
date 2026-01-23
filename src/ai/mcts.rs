@@ -234,27 +234,4 @@ impl<P: Policy, O: Platform> AI<O> for MCTSGeneric<P, O> {
     }
 }
 
-#[derive(Clone)]
-pub struct MCTS<O: Platform> {
-    pub mcts: MCTSGeneric<TrivialPolicy, O>,
-}
-
-impl<O: Platform> AI<O> for MCTS<O> {
-    fn new(color: Color, difficulty: usize) -> Self {
-        Self {
-            mcts: MCTSGeneric::new(color, difficulty),
-        }
-    }
-
-    fn color(&self) -> &Color {
-        self.mcts.color()
-    }
-
-    fn set_color(&mut self, color:Color){
-        self.mcts.color = color;
-    }
-
-    fn give_all_options(&mut self, board:&Board, verbose:bool) -> (f32, Vec<(f32, usize, Direction)>) {
-        self.mcts.give_all_options(board, verbose)
-    }
-}
+pub type MCTS<O> = MCTSGeneric<TrivialPolicy, O>;

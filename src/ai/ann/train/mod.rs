@@ -66,15 +66,15 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
 
     fn train_step(&mut self, input:Tensor<B, 4>, target: PolicyValueTarget<B>, illegal_mask: Tensor<B, 4>) -> Tensor<B, 1> {
         // Forward pass
-        let output = self.alphazeutreeko.mcts.policy.ann.forward(input);
+        let output = self.alphazeutreeko.policy.ann.forward(input);
 
         let loss = self.loss(output, target, illegal_mask);
         let grads = loss.backward();
-        let grads = GradientsParams::from_grads(grads, &self.alphazeutreeko.mcts.policy.ann);
+        let grads = GradientsParams::from_grads(grads, &self.alphazeutreeko.policy.ann);
 
         // Update self.alphazeutreeko.policy.ann parameters
         let lr = self.learning_rate_schedule.step();
-        self.alphazeutreeko.mcts.policy.ann = self.optimizer.step(lr, self.alphazeutreeko.mcts.policy.ann.clone(), grads);
+        self.alphazeutreeko.policy.ann = self.optimizer.step(lr, self.alphazeutreeko.policy.ann.clone(), grads);
         loss
     }
 
@@ -84,7 +84,7 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
         let has_opponent = self.opponent.is_some();
         for epoch in 1..=max_epoch {
             println!("Starting iteration {}", epoch);
-            self.alphazeutreeko.mcts.graph.clear();
+            self.alphazeutreeko.graph.clear();
             let mut to_feed = vec![];
             let mut board = Board::default_new();
             let mut board_hashes = HashSet::new();
@@ -164,18 +164,18 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
     }
 
     pub fn save(&self, filepath: &str) -> Result<(), Box<dyn std::error::Error>> {
-        self.alphazeutreeko.mcts.policy.ann.clone().save_file(filepath, &self.recorder)?;
+        self.alphazeutreeko.policy.ann.clone().save_file(filepath, &self.recorder)?;
         Ok(())
     }
 
      pub fn save_for_web(&self) {
         let mut store = BurnpackStore::from_file("assets/models/web/model");
-        let _ = self.alphazeutreeko.mcts.policy.ann.save_into(&mut store);
+        let _ = self.alphazeutreeko.policy.ann.save_into(&mut store);
     }
 
     pub fn load(&mut self, filepath: &str) -> Result<(), Box<dyn std::error::Error>> {
-        let loaded_ann = self.alphazeutreeko.mcts.policy.ann.clone().load_file(filepath, &self.recorder, &self.device)?;
-        self.alphazeutreeko.mcts.policy.ann = loaded_ann;
+        let loaded_ann = self.alphazeutreeko.policy.ann.clone().load_file(filepath, &self.recorder, &self.device)?;
+        self.alphazeutreeko.policy.ann = loaded_ann;
         Ok(())
     }
 }
