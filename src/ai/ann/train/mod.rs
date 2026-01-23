@@ -163,7 +163,7 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
         let opponent = self.opponent.as_mut().unwrap();
         let mut victories = 0.0;
         let mut draws = 0.0;
-        for epoch in 1..=20 {
+        for _ in 1..=20 {
             self.alphazeutreeko.clear_graph();
             let mut board = Board::default_new();
             let mut number_moves = 0;
