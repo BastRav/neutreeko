@@ -2,14 +2,14 @@ use std::vec;
 use std::marker::PhantomData;
 
 use crate::{
-    logic::{Board, Color, Direction},
-    platform::Platform,
+    ai::alphazeutreeko::AlphaZeutreeko, logic::{Board, Color, Direction}, platform::Platform
 };
-use super::AI;
+use super::{AI, alphazeutreeko::ANNPolicy};
 
 use petgraph::Graph;
 use petgraph::visit::EdgeRef;
 use petgraph::prelude::NodeIndex;
+use burn::tensor::backend::Backend;
 
 
 #[derive(Clone)]
@@ -238,3 +238,16 @@ impl<P: Policy, O: Platform> AI<O> for MCTSGeneric<P, O> {
 }
 
 pub type MCTS<O> = MCTSGeneric<TrivialPolicy, O>;
+
+impl<B: Backend, O: Platform> AlphaZeutreeko<B, O> {
+    pub fn new_no_data(color: Color, difficulty: usize) -> Self {
+        O::print(&format!("Creating MCTS AI with trivial policy? {}", false));
+        Self {
+            color,
+            time_allowed_ms: (difficulty.pow(3)) as f64 * 0.05 * 1000.0,
+            graph: Graph::<MCTSNode, (f32, usize, Direction)>::new(),
+            policy: ANNPolicy::new_no_data(),
+            platform: PhantomData,
+        }
+    }
+}

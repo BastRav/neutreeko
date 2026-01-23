@@ -84,7 +84,7 @@ pub struct ANNConfig {
 }
 
 impl ANNConfig {
-    fn init<B: Backend>(channels: usize, device: &Device<B>) -> ANN<B> {
+    pub fn init<B: Backend>(channels: usize, device: &Device<B>) -> ANN<B> {
         let conv1 = Conv2dConfig::new([2, channels], [3, 3])
             .with_stride([1, 1])
             .with_padding(PaddingConfig2d::Same)
