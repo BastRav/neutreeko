@@ -1,15 +1,49 @@
 use core::f32;
 
 use crate::{
-    ai::ann::{
-        train::PolicyValueTarget,
-        utils::board_to_input,
-    },
+    ai::ann::utils::board_to_input,
     logic::{Board, Direction},
 };
 use strum::IntoEnumIterator;
 
 use burn::tensor::{backend::{Backend, AutodiffBackend}, Device, Tensor, s};
+
+#[derive(Clone)]
+pub struct PolicyValueTarget<B: AutodiffBackend> {
+    pub value: Tensor<B, 2>,
+    pub policy: Tensor<B, 4>,
+}
+
+impl<B: AutodiffBackend> PolicyValueTarget<B> {
+    fn rotate_clockwise_once(&self) -> Self {
+        Self {
+            value: self.value.clone(),
+            policy: rotate_clockwise_once(self.policy.clone()),
+        }
+    }
+
+    fn rotate_clockwise(&self, quarter_turns: i32) -> Self {
+        Self {
+            value: self.value.clone(),
+            policy: rotate_clockwise(self.policy.clone(), quarter_turns),
+        }
+    }
+
+    fn flip(&self, horizontal: bool, vertical: bool) -> Self {
+        Self {
+            value: self.value.clone(),
+            policy: flip(self.policy.clone(), horizontal, vertical),
+        }
+    }
+
+    fn flip_diagonal(&self, upleft_downright_diag: bool, upright_downleft_diag: bool) -> Self {
+        Self {
+            value: self.value.clone(),
+            policy: flip_diagonal(self.policy.clone(), upleft_downright_diag, upright_downleft_diag),
+        }
+    }
+
+}
 
 pub fn illegal_mask<B>(board: &Board, device: &Device<B>) -> Tensor<B, 4>
 where B:Backend {
@@ -43,31 +77,40 @@ where B: AutodiffBackend {
     let mut input = board_to_input(&board, device);
     let mut target = moves_and_value_to_target(&board, board_eval, &opening_moves, device);
     let mut illegal_m = illegal_mask(&board, device);
-    let mut to_feed = vec![(input, target, illegal_m)];
+    let mut to_feed = add_symmetries(input, target, illegal_m);
 
     // second move
-    let mut board_symmetric = board.clone();
     board.move_pawn_until_blocked(0, &Direction::Right);
     opening_moves = vec![(1.0, 4, Direction::Down)];
     input = board_to_input(&board, device);
     target = moves_and_value_to_target(&board, board_eval, &opening_moves, device);
     illegal_m = illegal_mask(&board, device);
-    to_feed.push((input, target, illegal_m));
-
-    board_symmetric.move_pawn_until_blocked(1, &Direction::Left);
-    input = board_to_input(&board_symmetric, device);
-    target = moves_and_value_to_target(&board_symmetric, board_eval, &opening_moves, device);
-    illegal_m = illegal_mask(&board_symmetric, device);
-    to_feed.push((input, target, illegal_m));
+    to_feed.append(&mut add_symmetries(input, target, illegal_m));
 
     to_feed
 }
 
 pub fn add_symmetries<B>(input:Tensor<B, 4>, target: PolicyValueTarget<B>, illegal_mask: Tensor<B, 4>) -> Vec<(Tensor<B, 4>, PolicyValueTarget<B>, Tensor<B, 4>)>
 where B: AutodiffBackend {
-    let mut with_symmetries = vec![(input, target, illegal_mask)];
-    // WIP
+    let mut with_symmetries = vec![(input.clone(), target.clone(), illegal_mask.clone())];
+    with_symmetries.push((rotate_clockwise_once(input.clone()), target.rotate_clockwise_once(), rotate_clockwise_once(illegal_mask.clone())));
+    with_symmetries.push((rotate_clockwise(input.clone(), 2), target.rotate_clockwise(2), rotate_clockwise(illegal_mask.clone(), 2)));
+    with_symmetries.push((rotate_clockwise(input.clone(), 3), target.rotate_clockwise(3), rotate_clockwise(illegal_mask.clone(), 3)));
+    with_symmetries.push((flip(input.clone(), true, false), target.flip(true, false), flip(illegal_mask.clone(), true, false)));
+    with_symmetries.push((flip(input.clone(), false, true), target.flip(false, true), flip(illegal_mask.clone(), false, true)));
+    with_symmetries.push((flip_diagonal(input.clone(), true, false), target.flip_diagonal(true, false), flip_diagonal(illegal_mask.clone(), true, false)));
+    with_symmetries.push((flip_diagonal(input.clone(), false, true), target.flip_diagonal(false, true), flip_diagonal(illegal_mask.clone(), false, true)));
     with_symmetries
+}
+
+fn swap_direction_indices<B>(input:Tensor<B, 4>, directions_out: Vec<i32>) -> Tensor<B, 4>
+where B: AutodiffBackend {
+    let mut output = Tensor::zeros(input.shape(), &input.device());
+    for (new_idx, &old_idx) in directions_out.iter().enumerate() {
+        let input_slice = input.clone().slice(s![.., old_idx, .., ..]);
+        output = output.slice_assign(s![.., new_idx, .., ..], input_slice);
+    }
+    output
 }
 
 fn rotate_clockwise<B>(input: Tensor<B, 4>, quarter_turns: i32) -> Tensor<B, 4>
@@ -83,10 +126,32 @@ fn rotate_clockwise_once<B>(input: Tensor<B, 4>) -> Tensor<B, 4>
 where B: AutodiffBackend {
     let rotated = input.flip([2, 3]).transpose();
     let directions_out: Vec<i32> = Direction::iter().map(|d| d.rotate_clockwise(1).clone() as i32).collect();
-    let mut output = Tensor::zeros(rotated.shape(), &rotated.device());
-    for (new_idx, &old_idx) in directions_out.iter().enumerate() {
-        let src_slice = rotated.clone().slice(s![.., old_idx, .., ..]);
-        output = output.slice_assign(s![.., new_idx, .., ..], src_slice);
-    }
-    output
+    swap_direction_indices(rotated, directions_out)
 }
+
+fn flip<B>(input: Tensor<B, 4>, horizontal: bool, vertical: bool) -> Tensor<B, 4>
+where B: AutodiffBackend {
+    let mut flipped = input.clone();
+    if horizontal {
+        flipped = flipped.flip([3]);
+    }
+    if vertical {
+        flipped = flipped.flip([2]);
+    }
+    let directions_out: Vec<i32> = Direction::iter().map(|d| d.flip(horizontal, vertical).clone() as i32).collect();
+    swap_direction_indices(flipped, directions_out)
+}
+
+fn flip_diagonal<B>(input: Tensor<B, 4>, upleft_downright_diag: bool, upright_downleft_diag: bool) -> Tensor<B, 4>
+where B: AutodiffBackend {
+    let mut flipped = input.clone();
+    if upleft_downright_diag {
+        flipped = flip(rotate_clockwise_once(flipped), false, true);
+    }
+    if upright_downleft_diag {
+        flipped = flip(rotate_clockwise_once(flipped), true, false);
+    }
+    let directions_out: Vec<i32> = Direction::iter().map(|d| d.flip_diagonal(upleft_downright_diag, upright_downleft_diag).clone() as i32).collect();
+    swap_direction_indices(flipped, directions_out)
+}
+

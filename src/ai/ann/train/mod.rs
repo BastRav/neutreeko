@@ -1,6 +1,6 @@
 mod utils;
 use burn_store::{BurnpackStore, ModuleSnapshot};
-use utils::{moves_and_value_to_target, illegal_mask, opening};
+use utils::{moves_and_value_to_target, illegal_mask, opening, PolicyValueTarget, add_symmetries};
 
 use super::{
     ANN, PolicyValueOutput,
@@ -19,12 +19,6 @@ use crate::{
     logic::{Board, Color},
     platform::NativePlatform,
 };
-
-#[derive(Clone)]
-struct PolicyValueTarget<B: AutodiffBackend> {
-    value: Tensor<B, 2>,
-    policy: Tensor<B, 4>,
-}
 
 pub struct ANNTrainer<B: AutodiffBackend, A: AI<NativePlatform>> {
     alphazeutreeko: AlphaZeutreeko<B, NativePlatform>,
@@ -143,7 +137,9 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
                 let input = board_to_input(&board_learn, &self.device);
                 let target = moves_and_value_to_target(&board_learn, board_eval, &moves_eval, &self.device);
                 let illegal_mask = illegal_mask(&board_learn, &self.device);
-                self.train_step(input, target, illegal_mask);
+                for (input_iter, target_iter, illegal_mask_iter) in add_symmetries(input, target, illegal_mask).into_iter() {
+                    self.train_step(input_iter, target_iter, illegal_mask_iter);
+                }
             }
             if has_opponent {
                 self.alphazeutreeko.set_color(alphazeutreeko_color.other_color());
