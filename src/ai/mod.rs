@@ -30,7 +30,7 @@ pub trait AI<O: Platform>: Clone {
                 best_moves_found.push((option.1, &option.2));
             }
         }
-        let best_move_found = best_moves_found[(O::random() * best_moves_found.len() as f32).floor() as usize];
+        let best_move_found = best_moves_found[O::random_int(best_moves_found.len())];
         if verbose {
             O::print(&format!("==Best move found: {:?} with score {}==", best_move_found, best_score));
         }

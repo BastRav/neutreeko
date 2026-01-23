@@ -3,6 +3,8 @@ use std::hash::{Hash, Hasher, DefaultHasher};
 use strum_macros::EnumIter;
 use strum::IntoEnumIterator;
 
+use crate::platform::Platform;
+
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
 pub enum Color {
     Yellow,
@@ -32,8 +34,8 @@ impl Pawn {
 
 #[derive(Clone, PartialEq, Debug, Hash)]
 pub struct Board {
-    pub number_of_rows: u8,
-    pub number_of_columns: u8,
+    pub number_of_rows: usize,
+    pub number_of_columns: usize,
     pub pawns: Vec<Pawn>,
     pub next_player: Option<Color>,
 }
@@ -141,8 +143,8 @@ impl Direction {
 
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
 pub struct Position {
-    pub row: u8,
-    pub column: u8,
+    pub row: usize,
+    pub column: usize,
 }
 
 fn aligned_positions(positions_in: &Vec<&Position>) -> bool {
@@ -172,7 +174,7 @@ fn aligned_positions(positions_in: &Vec<&Position>) -> bool {
 }
 
 impl Board {
-    pub fn new(number_of_rows: u8, number_of_columns: u8, pawns: Vec<Pawn>, next_player: Option<Color>) -> Self {
+    pub fn new(number_of_rows: usize, number_of_columns: usize, pawns: Vec<Pawn>, next_player: Option<Color>) -> Self {
         let board = Self { number_of_rows, number_of_columns, pawns, next_player};
         if board.is_valid() {
             board
@@ -190,6 +192,27 @@ impl Board {
         pawns.push(Pawn::new(Color::Yellow, Position { row: 4, column: 1 }));
         pawns.push(Pawn::new(Color::Yellow, Position { row: 4, column: 3 }));
         Self::new(5, 5, pawns, Some(Color::Green))
+    }
+
+    pub fn random_board<P: Platform>() -> Self {
+        let mut board;
+        loop {
+            let mut pawns = Vec::new();
+            pawns.push(Pawn::new(Color::Green, Position { row: P::random_int(5), column: P::random_int(5) }));
+            pawns.push(Pawn::new(Color::Green, Position { row: P::random_int(5), column: P::random_int(5) }));
+            pawns.push(Pawn::new(Color::Green, Position { row: P::random_int(5), column: P::random_int(5) }));
+            pawns.push(Pawn::new(Color::Yellow, Position { row: P::random_int(5), column: P::random_int(5) }));
+            pawns.push(Pawn::new(Color::Yellow, Position { row: P::random_int(5), column: P::random_int(5) }));
+            pawns.push(Pawn::new(Color::Yellow, Position { row: P::random_int(5), column: P::random_int(5) }));
+            board = Self { 
+                number_of_rows: 5,
+                number_of_columns: 5,
+                pawns,
+                next_player: Some(Color::Green)
+            };
+            if board.is_valid() && board.winner().is_none() {break ;}
+        }
+        board
     }
 
     pub fn get_hash(&self) -> u64 {
@@ -261,19 +284,19 @@ impl Board {
         None
     }
 
-    fn move_pawn(&mut self, pawn_index: usize, row_increment: i32, column_increment: i32) -> bool {
+    fn move_pawn(&mut self, pawn_index: usize, row_increment: isize, column_increment: isize) -> bool {
         let init_position = self.pawns[pawn_index].position.clone();
         
-        let final_row = i32::from(init_position.row) + row_increment;
-        let final_column = i32::from(init_position.column) + column_increment;
+        let final_row = isize::try_from(init_position.row).unwrap() + row_increment;
+        let final_column = isize::try_from(init_position.column).unwrap() + column_increment;
 
-        if final_row < 0 || final_row >= i32::from(self.number_of_rows)
-            || final_column < 0 || final_column >= i32::from(self.number_of_columns) {
+        if final_row < 0 || final_row >= isize::try_from(self.number_of_rows).unwrap()
+            || final_column < 0 || final_column >= isize::try_from(self.number_of_columns).unwrap() {
             return false;
         }
         let final_position = Position{
-            row: u8::try_from(final_row).unwrap(),
-            column: u8::try_from(final_column).unwrap()
+            row: usize::try_from(final_row).unwrap(),
+            column: usize::try_from(final_column).unwrap()
         };
         
         self.pawns[pawn_index].position = final_position;

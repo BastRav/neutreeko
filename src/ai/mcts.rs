@@ -97,7 +97,7 @@ impl<P: Policy, O: Platform> MCTSGeneric<P, O> {
         let player_color = node.color.clone();
         while current_board.next_player.is_some() {
             let all_possible_moves = current_board.get_all_valid_directions_and_resulting_boards();
-            let random_move_index = (O::random() * all_possible_moves.len() as f32).floor() as usize;
+            let random_move_index = O::random_int(all_possible_moves.len());
             current_board = all_possible_moves[random_move_index].2.clone();
         }
         if current_board.winner().unwrap() == player_color {

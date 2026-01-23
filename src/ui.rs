@@ -304,8 +304,8 @@ impl App {
             let scaling_i32 = SCALING as i32;
             let controls_size = 180;
 
-            let top = 50 + i32::from(pawn.position.row) * scaling_i32 - (controls_size - scaling_i32) / 2;
-            let left = ((f64::from(pawn.position.column) + 0.5 - f64::from(self.board.number_of_columns) / 2.0 ) * f64::from(SCALING)) as i32;
+            let top = 50 + i32::try_from(pawn.position.row).unwrap() * scaling_i32 - (controls_size - scaling_i32) / 2;
+            let left = ((f64::from(pawn.position.column as u8) + 0.5 - f64::from(self.board.number_of_columns as u8) / 2.0 ) * f64::from(SCALING)) as i32;
 
             html! {
                 <div class="direction-controls" style={format!("position: relative; top: {}px; left: {}px;", top, left)}>
@@ -411,8 +411,8 @@ impl Component for PawnView {
                         Color::Green => "green",
                         Color::Yellow => "yellow",
                     },
-                    u32::from(ctx.props().position.row) * SCALING + MARGIN - 2,
-                    u32::from(ctx.props().position.column) * SCALING + MARGIN - 2,
+                    u32::try_from(ctx.props().position.row).unwrap() * SCALING + MARGIN - 2,
+                    u32::try_from(ctx.props().position.column).unwrap() * SCALING + MARGIN - 2,
                     border_style,
                 )}
             >

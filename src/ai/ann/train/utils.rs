@@ -226,4 +226,3 @@ where B: AutodiffBackend {
     let directions_out: Vec<i32> = Direction::iter().map(|d| d.flip_diagonal(upleft_downright_diag, upright_downleft_diag).clone() as i32).collect();
     swap_direction_indices(flipped, directions_out)
 }
-

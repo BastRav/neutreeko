@@ -80,7 +80,7 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
             println!("Starting iteration {}", epoch);
             self.alphazeutreeko.clear_graph();
             let mut to_feed = vec![];
-            let mut board = Board::default_new();
+            let mut board = Board::random_board::<NativePlatform>();
             let mut board_hashes = HashSet::new();
             board_hashes.insert(board.get_hash());
             let mut number_moves = 0;

@@ -5,6 +5,9 @@ pub trait Platform: Clone {
     fn now() -> f64;
     fn random() -> f32;
     fn print(str_print: &str);
+    fn random_int(number_values: usize) -> usize {
+        (Self::random() * number_values as f32).floor() as usize
+    }
 }
 
 #[derive(Clone)]
