@@ -49,11 +49,11 @@ impl<B: Backend> ANN<B> {
         
         // First block
         let out = self.conv1.forward(input); // [1, 32, 5, 5]
-        //info!("After conv1 shape: {:?}", out.shape());
+        // info!("After conv1 shape: {:?}", out.shape());
         let out = self.bn1.forward(out); // [1, 32, 5, 5]
-        //info!("After bn1 shape: {:?}", out.shape());
+        // info!("After bn1 shape: {:?}", out.shape());
         let out = self.relu.forward(out); // [1, 32, 5, 5]
-        //info!("After first block shape: {:?}", out.shape());
+        // info!("After first block shape: {:?}", out.shape());
 
         // Residual blocks
         let out = self.layer1.forward(out); // [1, 32, 5, 5]
@@ -61,7 +61,7 @@ impl<B: Backend> ANN<B> {
         let out = self.layer3.forward(out); // [1, 32, 5, 5]
         let out = self.layer4.forward(out); // [1, 32, 5, 5]
         let out_copy = out.clone();
-        //info!("After residual blocks shape: {:?}", out.shape());
+        // info!("After residual blocks shape: {:?}", out.shape());
 
         let value = self.value_head.forward(out); // [1, 1]
         let policy = self.policy_head.forward(out_copy); // [1, 8, 5, 5]

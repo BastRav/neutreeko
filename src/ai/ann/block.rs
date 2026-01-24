@@ -7,7 +7,7 @@ use burn::{
     tensor::{Device, Tensor, backend::Backend, activation::sigmoid},
 };
 
-/// ResNet [basic residual block](https://paperswithcode.com/method/residual-block) implementation.
+// ResNet [basic residual block](https://paperswithcode.com/method/residual-block) implementation.
 #[derive(Module, Debug)]
 pub struct ResidualBlock<B: Backend> {
   conv1: Conv2d<B>,
@@ -45,7 +45,7 @@ impl<B: Backend> ResidualBlock<B> {
     }
 
     pub fn forward(&self, input: Tensor<B, 4>) -> Tensor<B, 4> {
-        //info!("Residual block forward pass with input shape: {:?}", input.shape());
+        // info!("Residual block forward pass with input shape: {:?}", input.shape());
         let identity = input.clone();
 
         // Conv block
@@ -60,7 +60,7 @@ impl<B: Backend> ResidualBlock<B> {
 
         // Activation
         let out = self.relu.forward(out);
-        //info!("Residual block output shape: {:?}", out.shape());
+        // info!("Residual block output shape: {:?}", out.shape());
         out
     }
 }
@@ -94,19 +94,19 @@ impl<B: Backend> ValueHead<B> {
     }
 
     pub fn forward(&self, input: Tensor<B, 4>) -> Tensor<B, 2> {
-        //info!("Value head forward pass with input shape: {:?}", input.shape());
+        // info!("Value head forward pass with input shape: {:?}", input.shape());
         let out = self.conv1.forward(input);
-        //info!("After conv1 shape: {:?}", out.shape());
+        // info!("After conv1 shape: {:?}", out.shape());
         let out = self.bn1.forward(out);
-        //info!("After bn1 shape: {:?}", out.shape());
+        // info!("After bn1 shape: {:?}", out.shape());
         let out = self.relu.forward(out);
-        //info!("After relu shape: {:?}", out.shape());
+        // info!("After relu shape: {:?}", out.shape());
         let out = out.flatten(1, 3);
-        //info!("After flatten shape: {:?}", out.shape());
+        // info!("After flatten shape: {:?}", out.shape());
         let out = self.linear.forward(out);
-        //info!("After linear shape: {:?}", out.shape());
+        // info!("After linear shape: {:?}", out.shape());
         let out = sigmoid(out);
-        //info!("Value head output shape: {:?}", out.shape());
+        // info!("Value head output shape: {:?}", out.shape());
         out
     }
 }
@@ -136,13 +136,13 @@ impl<B: Backend> PolicyHead<B> {
     }
 
     pub fn forward(&self, input: Tensor<B, 4>) -> Tensor<B, 4> {
-        //info!("Policy head forward pass with input shape: {:?}", input.shape());
+        // info!("Policy head forward pass with input shape: {:?}", input.shape());
         let out = self.conv1.forward(input);
-        //info!("After conv1 shape: {:?}", out.shape());
+        // info!("After conv1 shape: {:?}", out.shape());
         let out = self.bn1.forward(out);
-        //info!("After bn1 shape: {:?}", out.shape());
+        // info!("After bn1 shape: {:?}", out.shape());
         let out = self.relu.forward(out);
-        //info!("Policy head output shape: {:?}", out.shape());
+        // info!("Policy head output shape: {:?}", out.shape());
         out
     }
 }

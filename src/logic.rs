@@ -83,49 +83,27 @@ impl Direction {
         after_vertical_flip
     }
 
-    pub fn rotate_clockwise(&self, quarter_turns: i32) -> &Self {
+    fn rotate_clockwise_once(&self) -> &Self {
         let resulting_direction;
-        match quarter_turns.rem_euclid(4) {
-            0 => resulting_direction = self,
-            1 => {
-                match &self {
-                    Direction::Up => resulting_direction = &Direction::Right,
-                    Direction::UpRight => resulting_direction = &Direction::DownRight,
-                    Direction::Right => resulting_direction = &Direction::Down,
-                    Direction::DownRight => resulting_direction = &Direction::DownLeft,
-                    Direction::Down => resulting_direction = &Direction::Left,
-                    Direction::DownLeft => resulting_direction = &Direction::UpLeft,
-                    Direction::Left => resulting_direction = &Direction::Up,
-                    Direction::UpLeft => resulting_direction = &Direction::UpRight,
-                }
-            }
-            2 => {
-                match &self {
-                    Direction::Up => resulting_direction = &Direction::Down,
-                    Direction::UpRight => resulting_direction = &Direction::DownLeft,
-                    Direction::Right => resulting_direction = &Direction::Left,
-                    Direction::DownRight => resulting_direction = &Direction::UpLeft,
-                    Direction::Down => resulting_direction = &Direction::Up,
-                    Direction::DownLeft => resulting_direction = &Direction::UpRight,
-                    Direction::Left => resulting_direction = &Direction::Right,
-                    Direction::UpLeft => resulting_direction = &Direction::DownRight,
-                }
-            }
-            3 => {
-                match &self {
-                    Direction::Up => resulting_direction = &Direction::Left,
-                    Direction::UpRight => resulting_direction = &Direction::UpLeft,
-                    Direction::Right => resulting_direction = &Direction::Up,
-                    Direction::DownRight => resulting_direction = &Direction::UpRight,
-                    Direction::Down => resulting_direction = &Direction::Right,
-                    Direction::DownLeft => resulting_direction = &Direction::DownRight,
-                    Direction::Left => resulting_direction = &Direction::Down,
-                    Direction::UpLeft => resulting_direction = &Direction::DownLeft,
-                }
-            }
-            _ => unreachable!(),
+        match &self {
+            Direction::Up => resulting_direction = &Direction::Right,
+            Direction::UpRight => resulting_direction = &Direction::DownRight,
+            Direction::Right => resulting_direction = &Direction::Down,
+            Direction::DownRight => resulting_direction = &Direction::DownLeft,
+            Direction::Down => resulting_direction = &Direction::Left,
+            Direction::DownLeft => resulting_direction = &Direction::UpLeft,
+            Direction::Left => resulting_direction = &Direction::Up,
+            Direction::UpLeft => resulting_direction = &Direction::UpRight,
         }
-    resulting_direction
+        resulting_direction        
+    }
+
+    pub fn rotate_clockwise(&self, quarter_turns: i32) -> &Self {
+        let mut resulting_direction= self;
+        for _ in 0..quarter_turns.rem_euclid(4) {
+            resulting_direction = resulting_direction.rotate_clockwise_once();
+        }
+        resulting_direction
     }
 
     pub fn flip_diagonal(&self, upleft_downright_diag: bool, upright_downleft_diag: bool) -> &Self {

@@ -11,13 +11,13 @@ use burn::backend::{Autodiff, NdArray};
 
 #[cfg(feature = "train")]
 fn main() {
-    //train();
+    train();
     evaluate();
 }
 
 fn train() {
     let mut trainer: ANNTrainer<Autodiff<NdArray<f32>>, MinMax<NativePlatform>> = ANNTrainer::new();
-    //let _ = trainer.load("assets/models/3_100_MinMax6");
+    // let _ = trainer.load("assets/models/3_100_MinMax6");
 
     trainer.train_opening(1);
     let _ = trainer.save("assets/models/1_1_opening");

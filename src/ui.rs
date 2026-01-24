@@ -416,7 +416,7 @@ impl Component for PawnView {
                     border_style,
                 )}
             >
-                //{my_index}
+                // {my_index}
             </div>
         }
     }
