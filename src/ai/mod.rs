@@ -39,6 +39,9 @@ pub trait AI<O: Platform>: Clone {
 
     fn best_move(&mut self, board:&Board, verbose: bool) -> (usize, Direction) {
         let all_options = self.give_all_options(board, verbose);
+        if verbose {
+            O::print(&format!("==Board eval: {}==", all_options.0));
+        }
         self.best_move_from_vec(&all_options.1, verbose)
     }
 
