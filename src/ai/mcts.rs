@@ -103,7 +103,7 @@ impl<P: Policy, O: Platform> MCTSGeneric<P, O> {
         if current_board.winner().unwrap() == player_color {
             return 1.0;
         } else {
-            return 0.0;
+            return -1.0;
         }
     }
 
@@ -111,7 +111,7 @@ impl<P: Policy, O: Platform> MCTSGeneric<P, O> {
         let node = self.graph.node_weight(node_index).unwrap();
         match node.board.winner() {
             Some(color) => {
-                if &color == &node.color {1.0} else {0.0}
+                if &color == &node.color {1.0} else {-1.0}
             }
             None => {
                 if P::IS_TRIVIAL {
@@ -131,7 +131,7 @@ impl<P: Policy, O: Platform> MCTSGeneric<P, O> {
             let current_node = self.graph.node_weight_mut(current_node_index).unwrap();
             current_node.visits += 1;
             current_node.wins += to_add;
-            to_add = 1.0 - to_add;
+            to_add = -to_add;
             match self.graph.edges_directed(current_node_index, petgraph::Direction::Incoming).next() {
                 None => break,
                 Some(edge) => current_node_index = edge.source(),

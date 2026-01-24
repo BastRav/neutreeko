@@ -4,7 +4,7 @@ use burn::{
         BatchNorm, BatchNormConfig, PaddingConfig2d, Relu, Linear, LinearConfig,
         conv::{Conv2d, Conv2dConfig},
     },
-    tensor::{Device, Tensor, backend::Backend, activation::sigmoid},
+    tensor::{Device, Tensor, backend::Backend, activation::tanh},
 };
 
 // ResNet [basic residual block](https://paperswithcode.com/method/residual-block) implementation.
@@ -105,7 +105,7 @@ impl<B: Backend> ValueHead<B> {
         // info!("After flatten shape: {:?}", out.shape());
         let out = self.linear.forward(out);
         // info!("After linear shape: {:?}", out.shape());
-        let out = sigmoid(out);
+        let out = tanh(out);
         // info!("Value head output shape: {:?}", out.shape());
         out
     }

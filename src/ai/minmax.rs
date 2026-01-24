@@ -15,7 +15,7 @@ use petgraph::prelude::NodeIndex;
 struct BoardEvaluation {
     board: Board,
     color: Color,
-    score: usize,
+    score: isize,
     depth: usize,
 }
 
@@ -28,9 +28,9 @@ impl BoardEvaluation {
 
     fn score_board(&mut self) {
         match self.board.winner() {
-            Some(winner_color) if winner_color == self.color => self.score = 2000 - self.depth,
-            Some(_) => self.score = self.depth + 1,
-            None => self.score = 100,
+            Some(winner_color) if winner_color == self.color => self.score = 100 - self.depth as isize,
+            Some(_) => self.score = -100 + self.depth as isize,
+            None => self.score = 0,
         }
     }
 }
@@ -44,12 +44,12 @@ pub struct MinMax<O: Platform> {
 }
 
 impl <O: Platform> MinMax<O> {
-    fn minmax_score(&self, node_index: NodeIndex, depth_remaining: usize, mut alpha: usize, mut beta: usize, maximizing_player: bool) -> usize {
+    fn minmax_score(&self, node_index: NodeIndex, depth_remaining: usize, mut alpha: isize, mut beta: isize, maximizing_player: bool) -> isize {
         if depth_remaining == 0 {
             return self.graph.node_weight(node_index).unwrap().score;
         }
 
-        let mut value = if maximizing_player { 0 } else { usize::MAX };
+        let mut value = if maximizing_player { isize::MIN } else { isize::MAX };
         let mut at_least_one_edge = false;
         for edge in self.graph.edges(node_index) {
             at_least_one_edge = true;
@@ -128,16 +128,29 @@ impl <O: Platform> AI<O> for MinMax<O> {
         let mut all_moves_found = vec![];
         for edge in self.graph.edges(origin) {
             let target_node_index = edge.target();
-            let minmax = self.minmax_score(target_node_index, self.depth - 1, 0, usize::MAX, false);
-            total += minmax as f32;
+            let minmax = self.minmax_score(target_node_index, self.depth - 1, isize::MIN, isize::MAX, false);
+            let mut minmax_to_push = minmax;
+            if minmax_to_push == 0 {
+                // small positive value to draw
+                minmax_to_push = 1;
+            }
+            // don't allow below 0
+            minmax_to_push = minmax_to_push.max(0);
+            total += minmax_to_push as f32;
             let move_found = edge.weight().clone();
-            all_moves_found.push((minmax as f32, move_found.0, move_found.1));
+            all_moves_found.push((minmax_to_push as f32, move_found.0, move_found.1));
             if minmax > best_minmax {best_minmax = minmax;}
         }
-        all_moves_found.iter_mut().for_each(|x| x.0 /= total);
-        // indicates draw
-        if best_minmax == 100 { best_minmax = 1000;}
-        let board_eval = best_minmax as f32 / 2000.0;
+        // handle case of certain loss
+        if total < 0.5 {
+            let n_items = all_moves_found.len() as f32;
+            all_moves_found.iter_mut().for_each(|x| x.0 += 1.0 / n_items);
+        }
+        else {
+            all_moves_found.iter_mut().for_each(|x| x.0 /= total);
+        }
+
+        let board_eval = best_minmax as f32 / 100.0;
         (board_eval, all_moves_found)
     }
 }

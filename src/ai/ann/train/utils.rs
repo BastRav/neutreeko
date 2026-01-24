@@ -65,7 +65,7 @@ where B: AutodiffBackend {
     // initial board
     let mut board = Board::default_new();
     let mut opening_moves = vec![(0.5, 0, Direction::Right), (0.5, 1, Direction::Left)];
-    let board_eval = 0.5;
+    let board_eval = 0.0;
     let mut to_feed = move_to_learning_input(&board, &opening_moves, board_eval, device);
     // println!("Initial board");
     // println!("{}", board.str_rep());
