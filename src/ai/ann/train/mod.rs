@@ -167,19 +167,14 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
             self.alphazeutreeko.clear_graph();
             let mut board = Board::default_new();
             let mut number_moves = 0;
+            let alphazeutreeko_color = self.alphazeutreeko.color().clone();
             while board.winner().is_none() {
-                let alphazeutreeko_color = self.alphazeutreeko.color();
-                println!("Current board");
-                println!("{}", board.str_rep());
-                let possible_moves;
                 let best_move;
                 if board.next_player == Some(alphazeutreeko_color.clone()) {
-                    possible_moves = self.alphazeutreeko.give_all_options(&board, false);
-                    best_move = self.alphazeutreeko.best_move_from_vec(&possible_moves.1, false);
+                    best_move = self.alphazeutreeko.best_move(&board, false);
                 }
                 else {
-                    possible_moves = opponent.give_all_options(&board, false);
-                    best_move = opponent.best_move_from_vec(&possible_moves.1, false);
+                    best_move = opponent.best_move(&board, false);
                 }
                 let moved = board.move_pawn_until_blocked(best_move.0, &best_move.1);
                 if !moved {
@@ -191,12 +186,11 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
                     break;
                 }
             }
-            let alphazeutreeko_color = self.alphazeutreeko.color().clone();
             if board.winner() == Some(alphazeutreeko_color.clone()) {
                 victories += 1.0;
             }
             self.alphazeutreeko.set_color(alphazeutreeko_color.other_color());
-            opponent.set_color(alphazeutreeko_color);
+            opponent.set_color(alphazeutreeko_color.clone());
         }
         println!("Victories: {:.1}%, Draws: {:.1}%", 5.0 * victories, 5.0 * draws);
     }
