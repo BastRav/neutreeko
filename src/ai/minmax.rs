@@ -124,7 +124,7 @@ impl <O: Platform> AI<O> for MinMax<O> {
             to_explore = to_explore_next;
         }
         let mut total = 0.0;
-        let mut best_minmax = 0;
+        let mut best_minmax = isize::MIN;
         let mut all_moves_found = vec![];
         for edge in self.graph.edges(origin) {
             let target_node_index = edge.target();

@@ -16,7 +16,7 @@ use burn::tensor::backend::Backend;
 struct MCTSNode {
     board_hash: u64,
     board: Board,
-    color: Color,
+    color_next_player: Color, // the color of the next player (if no next player, not the color of the previous player)
     visits: usize,
     wins: f32,
     untried_actions: Vec<(f32, usize, Direction, Board)>,
@@ -24,11 +24,11 @@ struct MCTSNode {
 }
 
 impl MCTSNode {
-    fn new(board: Board, color: Color, untried_actions: Vec<(f32, usize, Direction, Board)>, board_eval: f32) -> Self {
+    fn new(board: Board, color_next_player: Color, untried_actions: Vec<(f32, usize, Direction, Board)>, board_eval: f32) -> Self {
         Self {
             board_hash: board.get_hash(),
             board,
-            color,
+            color_next_player,
             visits: 0,
             wins: 0.0,
             untried_actions,
@@ -85,7 +85,7 @@ impl<P: Policy, O: Platform> MCTSGeneric<P, O> {
     fn expand(&mut self, node_index: NodeIndex) -> NodeIndex {
         let node = self.graph.node_weight_mut(node_index).unwrap();
         let action = node.untried_actions.pop().unwrap();
-        let child_color = node.color.other_color();
+        let child_color = node.color_next_player.other_color();
         let prediction = self.policy.predict(&action.3);
         let child = self.graph.add_node(MCTSNode::new(action.3, child_color, prediction.1, prediction.0));
         self.graph.add_edge(node_index, child, (action.0, action.1, action.2));
@@ -94,24 +94,23 @@ impl<P: Policy, O: Platform> MCTSGeneric<P, O> {
 
     fn random_rollout(&self, node: &MCTSNode) -> f32 {
         let mut current_board = node.board.clone();
-        let player_color = node.color.clone();
         while current_board.next_player.is_some() {
             let all_possible_moves = current_board.get_all_valid_directions_and_resulting_boards();
             let random_move_index = O::random_int(all_possible_moves.len());
             current_board = all_possible_moves[random_move_index].2.clone();
         }
-        if current_board.winner().unwrap() == player_color {
-            return 1.0;
-        } else {
-            return -1.0;
-        }
+        if current_board.winner().unwrap() == node.color_next_player {1.0} else {-1.0}
     }
 
     fn rollout(&self, node_index: NodeIndex) -> f32 {
         let node = self.graph.node_weight(node_index).unwrap();
         match node.board.winner() {
             Some(color) => {
-                if &color == &node.color {1.0} else {-1.0}
+                if &color == &node.color_next_player {
+                    unreachable!() // cannot win because opponent made a move
+                } else {
+                    -1.0
+                }
             }
             None => {
                 if P::IS_TRIVIAL {
@@ -153,7 +152,7 @@ impl<P: Policy, O: Platform> MCTSGeneric<P, O> {
             if P::IS_TRIVIAL {
                 prior = 1.0;
             }
-            let exploit = child.wins / child.visits as f32;
+            let exploit = -child.wins / child.visits as f32;
             let explore = prior * 1.414 * (parent_visits.ln() / child.visits as f32).sqrt();
             let score = exploit + explore;
             if score > best_score {
@@ -208,6 +207,7 @@ impl<P: Policy, O: Platform> AI<O> for MCTSGeneric<P, O> {
 
     fn set_color(&mut self, color:Color){
         self.color = color;
+        self.graph.clear();
     }
 
     fn give_all_options(&mut self, board:&Board, verbose: bool) -> (f32, Vec<(f32, usize, Direction)>) {
@@ -226,7 +226,7 @@ impl<P: Policy, O: Platform> AI<O> for MCTSGeneric<P, O> {
             board_hash == index_hash
         });
         let origin = possible_origin.unwrap_or_else(|| {
-            self.graph.add_node(MCTSNode::new(board.clone(), self.color.other_color(), first_prediction.1, first_prediction.0))
+            self.graph.add_node(MCTSNode::new(board.clone(), self.color.clone(), first_prediction.1, first_prediction.0))
         });
 
         let start_time = O::now();
