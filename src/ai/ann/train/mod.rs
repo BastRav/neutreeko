@@ -32,8 +32,8 @@ pub struct ANNTrainer<B: AutodiffBackend, A: AI<NativePlatform>> {
 impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A> {
     pub fn new() -> Self {
         let device = B::Device::default();
-        let learning_rate_schedule = CosineAnnealingLrSchedulerConfig::new(1e-3, 10000).with_min_lr(5e-5).init().unwrap();
-        let optimizer = AdamConfig::new().with_weight_decay(Some(WeightDecayConfig::new(1e-3))).init();
+        let learning_rate_schedule = CosineAnnealingLrSchedulerConfig::new(1e-4, 10000).with_min_lr(1e-5).init().unwrap();
+        let optimizer = AdamConfig::new().with_weight_decay(Some(WeightDecayConfig::new(1e-6))).init();
         let alphazeutreeko = AlphaZeutreeko::new_no_data(Color::Green, 6);
         let opponent = None;
         let recorder = BinFileRecorder::<FullPrecisionSettings>::new();
@@ -49,17 +49,30 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
     }
 
     fn loss(&self, output: PolicyValueOutput<B>, target: PolicyValueTarget<B>, illegal_mask: Tensor<B, 4>) -> Tensor<B, 1> {
+        // println!("output value {}", output.value.to_string());
+        // println!("output policy {}", output.policy.to_string());
         let masked_probabilities = output.policy + illegal_mask;
+        // println!("masked probas {}", masked_probabilities.to_string());
         let flat_probas: Tensor<B, 2> = masked_probabilities.flatten(1, 3);
+        // println!("flat probas {}", flat_probas.to_string());
         let log_probabilities = log_softmax(flat_probas, 1);
+        // println!("log probas {}", log_probabilities.to_string());
         let flat_target = target.policy.flatten(1, 3);
+        // println!("flat target {}", flat_target.to_string());
         let policy_loss = -(flat_target * log_probabilities).sum_dim(1).mean();
+        // println!("policy loss {}", policy_loss.to_string());
         let value_loss = MseLoss::new().forward(output.value, target.value, Reduction::Mean);
+        // println!("value loss {}", value_loss.to_string());
         policy_loss + value_loss * 0.5
     }
 
     fn train_step(&mut self, input:Tensor<B, 4>, target: PolicyValueTarget<B>, illegal_mask: Tensor<B, 4>) -> Tensor<B, 1> {
         // Forward pass
+        // println!("input {}", input.to_string());
+        // println!("target value {}", target.value.to_string());
+        // println!("target policy {}", target.policy.to_string());
+        // println!("mask {}", illegal_mask.to_string());
+
         let output = self.alphazeutreeko.policy.ann.forward(input);
 
         let loss = self.loss(output, target, illegal_mask);
@@ -69,6 +82,7 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
         // Update self.alphazeutreeko.policy.ann parameters
         let lr = self.learning_rate_schedule.step();
         self.alphazeutreeko.policy.ann = self.optimizer.step(lr, self.alphazeutreeko.policy.ann.clone(), grads);
+        println!("loss {}", loss.to_data().to_string());
         loss
     }
 
@@ -77,7 +91,7 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
         let mut draws = 0.0;
         let has_opponent = self.opponent.is_some();
         for epoch in 1..=max_epoch {
-            println!("Starting iteration {}", epoch);
+            println!("Starting iteration {}/{}", epoch, max_epoch);
             self.alphazeutreeko.clear_graph();
             let mut to_feed = vec![];
             let mut board = Board::random_board::<NativePlatform>();
@@ -92,7 +106,7 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
                 let best_move;
                 if board.next_player == Some(alphazeutreeko_color.clone()) {
                     println!("AlphaZeutreeko is playing");
-                    possible_moves = self.alphazeutreeko.give_all_options(&board, true);
+                    possible_moves = self.alphazeutreeko.give_all_options(&board, false);
                     best_move = self.alphazeutreeko.best_move_from_vec(&possible_moves.1, false);
                 }
                 else if !has_opponent {
@@ -159,11 +173,11 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
         }
     }
 
-    pub fn evaluate(&mut self) {
+    pub fn evaluate(&mut self, number_games: usize) {
         let opponent = self.opponent.as_mut().unwrap();
         let mut victories = 0.0;
         let mut draws = 0.0;
-        for _ in 1..=20 {
+        for _ in 1..=number_games {
             self.alphazeutreeko.clear_graph();
             let mut board = Board::default_new();
             let mut number_moves = 0;
@@ -192,7 +206,7 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
             self.alphazeutreeko.set_color(alphazeutreeko_color.other_color());
             opponent.set_color(alphazeutreeko_color.clone());
         }
-        println!("Victories: {:.1}%, Draws: {:.1}%", 5.0 * victories, 5.0 * draws);
+        println!("Victories: {:.1}%, Draws: {:.1}%", 100.0 * victories / number_games as f32, 100.0 * draws / number_games as f32);
     }
 
     pub fn save(&self, filepath: &str) -> Result<(), Box<dyn std::error::Error>> {
@@ -201,7 +215,7 @@ impl<B: AutodiffBackend<FloatElem = f32>, A: AI<NativePlatform>> ANNTrainer<B, A
     }
 
     pub fn save_for_web(&self) {
-        let mut store = BurnpackStore::from_file("assets/models/web/model");
+        let mut store = BurnpackStore::from_file("assets/models/web/modelNew");
         let _ = self.alphazeutreeko.policy.ann.save_into(&mut store);
     }
 

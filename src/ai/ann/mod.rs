@@ -23,6 +23,7 @@ use burn_store::{ModuleSnapshot, BurnpackStore};
 
 use block::{ResidualBlock, ValueHead, PolicyHead};
 
+#[derive(Debug)]
 struct PolicyValueOutput<B: Backend> {
     value: Tensor<B, 2>,
     policy: Tensor<B, 4>,

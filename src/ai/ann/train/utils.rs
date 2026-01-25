@@ -196,7 +196,6 @@ where B: AutodiffBackend {
     with_symmetries.push((flip(input.clone(), false, true, false), target.flip(false, true), flip(illegal_mask.clone(), false, true, true)));
     with_symmetries.push((flip_diagonal(input.clone(), true, false, false), target.flip_diagonal(true, false), flip_diagonal(illegal_mask.clone(), true, false, true)));
     with_symmetries.push((flip_diagonal(input.clone(), false, true, false), target.flip_diagonal(false, true), flip_diagonal(illegal_mask.clone(), false, true, true)));
-    // println!("{:#?}", with_symmetries);
     with_symmetries
 }
 
@@ -221,7 +220,7 @@ where B: AutodiffBackend {
 
 fn rotate_clockwise_once<B>(input: Tensor<B, 4>, swap_directions: bool) -> Tensor<B, 4>
 where B: AutodiffBackend {
-    let rotated = input.transpose().flip([2]);
+    let rotated = input.transpose().flip([3]);
     let directions_out: Vec<i32> = Direction::iter().map(|d| d.rotate_clockwise(1).clone() as i32).collect();
     if swap_directions {
         swap_direction_indices(rotated, directions_out)
@@ -235,10 +234,10 @@ fn flip<B>(input: Tensor<B, 4>, horizontal: bool, vertical: bool, swap_direction
 where B: AutodiffBackend {
     let mut flipped = input.clone();
     if horizontal {
-        flipped = flipped.flip([3]);
+        flipped = flipped.flip([2]);
     }
     if vertical {
-        flipped = flipped.flip([2]);
+        flipped = flipped.flip([3]);
     }
     let directions_out: Vec<i32> = Direction::iter().map(|d| d.flip(horizontal, vertical).clone() as i32).collect();
     if swap_directions {
