@@ -104,22 +104,14 @@ impl<P: Policy, O: Platform> MCTSGeneric<P, O> {
 
     fn rollout(&self, node_index: NodeIndex) -> f32 {
         let node = self.graph.node_weight(node_index).unwrap();
-        match node.board.winner() {
-            Some(color) => {
-                if &color == &node.color_next_player {
-                    unreachable!() // cannot win because opponent made a move
-                } else {
-                    -1.0
-                }
-            }
-            None => {
-                if P::IS_TRIVIAL {
-                    return self.random_rollout(node);
-                }
-                else {
-                    return node.board_eval;
-                }
-            }
+        if node.board.winner().is_some() {
+            -1.0 // cannot win because opponent made a move, this is a loss
+        }
+        else if P::IS_TRIVIAL {
+            self.random_rollout(node)
+        }
+        else {
+            node.board_eval
         }
     }
 
@@ -139,7 +131,7 @@ impl<P: Policy, O: Platform> MCTSGeneric<P, O> {
     }
 
     fn best_child(&mut self, node_index: NodeIndex) -> NodeIndex {
-        let mut best_score = 0.0;
+        let mut best_score = f32::MIN;
         let mut best_child = self.graph.edges_directed(node_index, petgraph::Direction::Outgoing).next().unwrap().target();
         let parent_visits = self.graph.node_weight(node_index).unwrap().visits as f32;
         for edge in self.graph.edges_directed(node_index, petgraph::Direction::Outgoing) {

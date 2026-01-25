@@ -34,6 +34,8 @@ where B: Backend {
     possible_moves_proba.iter_mut().for_each(|x| x.0 = (x.0 - max_proba).exp());
     let total: f32 = possible_moves_proba.iter().map(|x| x.0).sum();
     possible_moves_proba.iter_mut().for_each(|x| x.0 /= total);
+    // sort in ascending proba order
+    possible_moves_proba.sort_by(|a,b| a.0.partial_cmp(&b.0).unwrap());
 
     possible_moves_proba
 }
